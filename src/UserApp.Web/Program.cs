@@ -4,7 +4,7 @@ using UserApp.Infrastructure.Persistence;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddRazorPages();
+builder.Services.AddControllersWithViews();
 builder.Services.AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
@@ -25,6 +25,9 @@ if (!app.Environment.IsDevelopment())
 app.UseStaticFiles();
 app.UseRouting();
 app.UseAuthorization();
-app.MapRazorPages();
+
+app.MapControllerRoute(
+    name: "default",
+    pattern: "{controller=Users}/{action=Index}/{id?}");
 
 app.Run();

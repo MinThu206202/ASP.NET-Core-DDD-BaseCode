@@ -1,0 +1,13 @@
+@model UserApp.Web.ViewModels.ErrorViewModel
+@{
+    ViewData["Title"] = "Error";
+}
+
+<h1 class="text-danger">Error</h1>
+@if (!string.IsNullOrEmpty(Model.Message))
+{
+    <div class="alert alert-danger">@Model.Message</div>
+}
+<div>
+    <a asp-action="Index" asp-controller="Users" class="btn btn-secondary">Back to users</a>
+</div>
