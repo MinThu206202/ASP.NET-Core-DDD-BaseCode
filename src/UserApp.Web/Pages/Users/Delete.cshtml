@@ -1,0 +1,9 @@
+@page "{id:guid}"
+@model UserApp.Web.Pages.Users.DeleteModel
+@{ ViewData["Title"] = "Delete User"; }
+<h2>Delete User</h2>
+<p>Are you sure you want to delete <strong>@Model.User?.Email</strong>?</p>
+<form method="post">
+    <button class="btn btn-danger" type="submit">Delete</button>
+    <a class="btn btn-secondary" asp-page="Index">Cancel</a>
+</form>

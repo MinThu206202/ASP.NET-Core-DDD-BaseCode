@@ -1,0 +1,18 @@
+@page "{id:guid}"
+@model UserApp.Web.Pages.Users.EditModel
+@{ ViewData["Title"] = "Edit User"; }
+<h2>Edit User</h2>
+@if (!string.IsNullOrEmpty(Model.Error)) { <div class="alert alert-danger">@Model.Error</div> }
+<form method="post" class="col-md-6">
+    <input type="hidden" asp-for="Input.Id" />
+    <div class="mb-3">
+        <label asp-for="Input.Email" class="form-label"></label>
+        <input asp-for="Input.Email" class="form-control" />
+    </div>
+    <div class="mb-3">
+        <label asp-for="Input.FullName" class="form-label"></label>
+        <input asp-for="Input.FullName" class="form-control" />
+    </div>
+    <button class="btn btn-primary" type="submit">Save</button>
+    <a class="btn btn-secondary" asp-page="Index">Cancel</a>
+</form>

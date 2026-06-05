@@ -1,0 +1,38 @@
+@page
+@model UserApp.Web.Pages.Users.IndexModel
+@{ ViewData["Title"] = "Users"; }
+
+<div class="d-flex justify-content-between mb-3">
+    <h2>Users</h2>
+    <a class="btn btn-success" asp-page="Create">+ New User</a>
+</div>
+
+<table class="table table-striped">
+    <thead><tr><th>Email</th><th>Full Name</th><th>Status</th><th>Created</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var u in Model.Users)
+    {
+        <tr>
+            <td>@u.Email</td>
+            <td>@u.FullName</td>
+            <td>@u.Status</td>
+            <td>@u.CreatedAt.ToString("yyyy-MM-dd HH:mm")</td>
+            <td>
+                <a class="btn btn-sm btn-primary" asp-page="Edit" asp-route-id="@u.Id">Edit</a>
+                <a class="btn btn-sm btn-danger" asp-page="Delete" asp-route-id="@u.Id">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<nav>
+    <ul class="pagination">
+        @for (int i = 1; i <= Model.TotalPages; i++)
+        {
+            <li class="page-item @(i == Model.Page ? "active" : "")">
+                <a class="page-link" asp-page="Index" asp-route-page="@i">@i</a>
+            </li>
+        }
+    </ul>
+</nav>
