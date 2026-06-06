@@ -17,5 +17,6 @@
   <ItemGroup>
     <ProjectReference Include="..\UserApp.Domain\UserApp.Domain.csproj" />
     <ProjectReference Include="..\UserApp.Application\UserApp.Application.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 </Project>

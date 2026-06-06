@@ -1,0 +1,29 @@
+@model UserApp.Web.ViewModels.ModuleGenerator.GenerateModuleViewModel
+
+<h2>Generate Module</h2>
+
+<form method="post">
+
+    <div class="mb-3">
+        <label>Module Name</label>
+
+        <input asp-for="ModuleName"
+               class="form-control" />
+
+        <span asp-validation-for="ModuleName"
+              class="text-danger"></span>
+    </div>
+
+    <button type="submit"
+            class="btn btn-primary">
+        Generate
+    </button>
+
+</form>
+
+@if (ViewBag.Success != null)
+{
+    <div class="alert alert-success mt-3">
+        @ViewBag.Success
+    </div>
+}

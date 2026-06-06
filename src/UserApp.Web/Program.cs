@@ -53,6 +53,9 @@ builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+builder.Services.AddScoped<
+    UserApp.Application.Common.Interfaces.IModuleGeneratorService,
+    UserApp.Infrastructure.Services.ModuleGeneratorService>();
 
 // ------------------------------------------------
 // JWT AUTHENTICATION (IMPORTANT FIX)
