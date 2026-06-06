@@ -1,29 +1,44 @@
 using UserApp.Domain.Common;
 
-namespace UserApp.Application.Common;
-
-public class BaseService<T> where T : class
+namespace UserApp.Application.Common
 {
-    private readonly IBaseRepository<T> _repo;
-
-    public BaseService(IBaseRepository<T> repo)
+    public class BaseService<T> : IBaseService<T> where T : class
     {
-        _repo = repo;
+        protected readonly IBaseRepository<T> _repo;
+
+        public BaseService(IBaseRepository<T> repo)
+        {
+            _repo = repo;
+        }
+
+        public Task<T?> GetByIdAsync(Guid id) => _repo.GetByIdAsync(id);
+        public Task<List<T>> ListAsync(int skip, int take) => _repo.ListAsync(skip, take);
+        public Task<int> CountAsync() => _repo.CountAsync();
+
+        public Task AddAsync(T entity) => _repo.AddAsync(entity);
+        public async Task UpdateAsync(T entity)
+        {
+            _repo.Update(entity);
+            await _repo.SaveChangesAsync();
+        }
+
+        public async Task RemoveAsync(T entity)
+        {
+            // If entity supports soft delete
+            var deletable = entity as dynamic;
+
+            if (deletable != null)
+            {
+                deletable.Delete();
+                _repo.Update(entity);
+            }
+            else
+            {
+                _repo.Remove(entity);
+            }
+
+            await _repo.SaveChangesAsync();
+        }
+        public Task SaveAsync() => _repo.SaveChangesAsync();
     }
-
-    public Task<T?> GetByIdAsync(Guid id) => _repo.GetByIdAsync(id);
-
-    public Task<List<T>> ListAsync(int skip, int take) => _repo.ListAsync(skip, take);
-
-    public Task AddAsync(T entity)
-        => _repo.AddAsync(entity);
-
-    public void Update(T entity)
-        => _repo.Update(entity);
-
-    public void Remove(T entity)
-        => _repo.Remove(entity);
-
-    public Task SaveAsync()
-        => _repo.SaveChangesAsync();
 }

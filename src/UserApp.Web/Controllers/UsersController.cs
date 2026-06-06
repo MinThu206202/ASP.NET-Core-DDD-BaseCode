@@ -1,14 +1,16 @@
 using AutoMapper;
-using UserApp.Domain.Users;
-using UserApp.Domain.Common;
+using UserApp.Application.Users.Interfaces;
+using UserApp.Web.Controllers;
 using UserApp.Web.ViewModels;
+using UserApp.Domain.Users;
 
 namespace UserApp.Web.Controllers;
 
 public class UsersController : BaseController<User, UserViewModel>
 {
-    public UsersController(IBaseRepository<User> repo, IMapper mapper)
-        : base(repo, mapper)
+    public UsersController(IUserService service, IMapper mapper)
+        : base(service, mapper)
     {
     }
+
 }

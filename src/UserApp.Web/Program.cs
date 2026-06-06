@@ -6,26 +6,41 @@ using UserApp.Infrastructure.Persistence.Repositories;
 using UserApp.Domain.Common;
 using UserApp.Domain.Users;
 using UserApp.Domain.Products;
+using UserApp.Application.Products;
+using UserApp.Application.Common;
+using UserApp.Domain.Users;
+using UserApp.Application.Products.Interfaces;
+using UserApp.Application.Users.Interfaces;
+using UserApp.Application.Users;
+
 
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add MVC with default Razor conventions
+// Add MVC
 builder.Services.AddControllersWithViews();
 
-// Add Infrastructure (DbContext, etc.)
+// Infrastructure
 builder.Services.AddInfrastructure(builder.Configuration);
 
-// Register AutoMapper
+// AutoMapper
 builder.Services.AddAutoMapper(typeof(MappingProfile));
 
-// Register generic repositories
+// ----------------------
+// REPOSITORIES
+// ----------------------
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
-// Register domain-specific repositories
 builder.Services.AddScoped<IUserRepository, UserRepository>();
-
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+
+// ----------------------
+// SERVICES
+// ----------------------
+builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
+
+builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 var app = builder.Build();
 

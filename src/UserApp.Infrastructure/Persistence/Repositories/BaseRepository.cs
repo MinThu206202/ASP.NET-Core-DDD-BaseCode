@@ -19,7 +19,11 @@ public class BaseRepository<T> : IBaseRepository<T> where T : class
 
     public virtual async Task<List<T>> ListAsync(int skip, int take, CancellationToken ct = default)
     {
-        return await Entities.Skip(skip).Take(take).ToListAsync(ct);
+        return await Entities
+            .Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(ct);
     }
 
     public virtual async Task<int> CountAsync(CancellationToken ct = default)
@@ -34,4 +38,6 @@ public class BaseRepository<T> : IBaseRepository<T> where T : class
 
     public virtual Task<int> SaveChangesAsync(CancellationToken ct = default)
         => _db.SaveChangesAsync(ct);
+
+
 }

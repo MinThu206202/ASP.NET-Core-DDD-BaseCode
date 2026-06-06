@@ -1,15 +1,15 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using UserApp.Application.Products.Interfaces;
 using UserApp.Domain.Products;
 using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers;
 
-public class ProductsController 
-    : BaseController<Product, ProductViewModel>
+public class ProductController : BaseController<Product, ProductViewModel>
 {
-    public ProductsController(IProductRepository repo, IMapper mapper)
-        : base(repo, mapper)
+    public ProductController(IProductService service, IMapper mapper) 
+        : base(service, mapper)
     {
     }
 }

@@ -1,6 +1,6 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
-using UserApp.Domain.Common;
+using UserApp.Application.Common;
 using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers;
@@ -9,12 +9,12 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     where TEntity : class
     where TViewModel : class
 {
-    private readonly IBaseRepository<TEntity> _repo;
+    private readonly IBaseService<TEntity> _service;
     private readonly IMapper _mapper;
 
-    protected BaseController(IBaseRepository<TEntity> repo, IMapper mapper)
+    protected BaseController(IBaseService<TEntity> service, IMapper mapper)
     {
-        _repo = repo;
+        _service = service;
         _mapper = mapper;
     }
 
@@ -23,8 +23,8 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     // -------------------------
     public async Task<IActionResult> Index(int page = 1, int size = 10)
     {
-        var data = await _repo.ListAsync((page - 1) * size, size);
-        var totalCount = await _repo.CountAsync();
+        var data = await _service.ListAsync((page - 1) * size, size);
+        var totalCount = await _service.CountAsync();
 
         var items = _mapper.Map<List<TViewModel>>(data);
 
@@ -44,7 +44,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     // -------------------------
     public async Task<IActionResult> Details(Guid id)
     {
-        var entity = await _repo.GetByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
         var vm = _mapper.Map<TViewModel>(entity);
@@ -65,8 +65,8 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             return View("Create", vm);
 
         var entity = _mapper.Map<TEntity>(vm);
-        await _repo.AddAsync(entity);
-        await _repo.SaveChangesAsync();
+        await _service.AddAsync(entity);
+        await _service.SaveAsync();   // 🔹 Add this line
 
         return RedirectToAction(nameof(Index));
     }
@@ -76,7 +76,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     // -------------------------
     public async Task<IActionResult> Edit(Guid id)
     {
-        var entity = await _repo.GetByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
         var vm = _mapper.Map<TViewModel>(entity);
@@ -90,12 +90,11 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         if (!ModelState.IsValid)
             return View("Edit", vm);
 
-        var entity = await _repo.GetByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
         _mapper.Map(vm, entity);
-        _repo.Update(entity);
-        await _repo.SaveChangesAsync();
+        await _service.UpdateAsync(entity);
 
         return RedirectToAction(nameof(Index));
     }
@@ -105,7 +104,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     // -------------------------
     public async Task<IActionResult> Delete(Guid id)
     {
-        var entity = await _repo.GetByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
         var vm = _mapper.Map<TViewModel>(entity);
@@ -116,11 +115,10 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(Guid id)
     {
-        var entity = await _repo.GetByIdAsync(id);
+        var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
-        _repo.Remove(entity);
-        await _repo.SaveChangesAsync();
+        await _service.RemoveAsync(entity); // now soft delete works
 
         return RedirectToAction(nameof(Index));
     }

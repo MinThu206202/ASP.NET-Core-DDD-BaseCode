@@ -11,4 +11,5 @@ public interface IBaseRepository<T> where T : class
     void Remove(T entity);
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
+
 }

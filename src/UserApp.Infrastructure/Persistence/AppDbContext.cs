@@ -16,5 +16,9 @@ public class AppDbContext : DbContext
     {
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Product>()
+        .Property(p => p.Price)
+        .HasPrecision(18, 2);
     }
 }
