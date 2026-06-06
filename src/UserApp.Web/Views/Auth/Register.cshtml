@@ -1,0 +1,8 @@
+@model UserApp.Web.ViewModels.RegisterViewModel
+
+<form method="post">
+    <input asp-for="Email" placeholder="Email" />
+    <input asp-for="FullName" placeholder="Full Name" />
+    <input asp-for="Password" type="password" placeholder="Password" />
+    <button type="submit">Register</button>
+</form>

@@ -8,7 +8,7 @@ using UserApp.Application.Products.Interfaces;
 
 namespace UserApp.Web.Controllers.Api;
 
-[Route("api/products")]
+[Route("api/[controller]")]
 [ApiController]
 [Authorize] // JWT required
 public class ProductApiController : BaseApiController<Product, ProductViewModel>

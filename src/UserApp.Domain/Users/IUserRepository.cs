@@ -4,5 +4,5 @@ namespace UserApp.Domain.Users;
 
 public interface IUserRepository : IBaseRepository<User>
 {
-    Task<User?> GetByEmailAsync(string email, CancellationToken ct = default);
+    Task<User?> GetByEmailAsync(string email);
 }
