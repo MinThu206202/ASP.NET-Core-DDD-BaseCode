@@ -13,6 +13,10 @@ using UserApp.Application.Products.Interfaces;
 using UserApp.Application.Products;
 using UserApp.Application.Users.Interfaces;
 using UserApp.Infrastructure.Persistence.Repositories;
+using UserApp.Application.Payments.Interfaces;
+using UserApp.Application.Payments;
+using UserApp.Domain.Payments;
+using UserApp.Infrastructure.Persistence.Repositories;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -56,6 +60,9 @@ builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<
     UserApp.Application.Common.Interfaces.IModuleGeneratorService,
     UserApp.Infrastructure.Services.ModuleGeneratorService>();
+
+builder.Services.AddScoped<IPaymentService, PaymentService>();
+builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 // ------------------------------------------------
 // JWT AUTHENTICATION (IMPORTANT FIX)

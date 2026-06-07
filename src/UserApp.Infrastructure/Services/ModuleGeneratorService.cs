@@ -52,23 +52,23 @@ public class ModuleGeneratorService : IModuleGeneratorService
         Directory.CreateDirectory(path);
 
         File.WriteAllText(Path.Combine(path, $"{name}.cs"),
-$@"using UserApp.Domain.Common;
+        $@"using UserApp.Domain.Common;
 
-namespace UserApp.Domain.{name}s;
+        namespace UserApp.Domain.{name}s;
 
-public class {name} : Entity<Guid>
-{{
-    public string Name {{ get; set; }} = string.Empty;
-}}");
+        public class {name} : Entity<Guid>
+        {{
+            public string Name {{ get; set; }} = string.Empty;
+        }}");
 
         File.WriteAllText(Path.Combine(path, $"I{name}Repository.cs"),
-$@"using UserApp.Domain.Common;
+        $@"using UserApp.Domain.Common;
 
-namespace UserApp.Domain.{name}s;
+        namespace UserApp.Domain.{name}s;
 
-public interface I{name}Repository : IBaseRepository<{name}>
-{{
-}}");
+        public interface I{name}Repository : IBaseRepository<{name}>
+        {{
+        }}");
     }
 
     // ========================= APPLICATION (FIXED HERE) =========================
@@ -82,29 +82,29 @@ public interface I{name}Repository : IBaseRepository<{name}>
 
         // SERVICE
         File.WriteAllText(Path.Combine(path, $"{name}Service.cs"),
-$@"using UserApp.Domain.{name}s;
-using UserApp.Application.Common;
-using UserApp.Application.{name}s.Interfaces;
+        $@"using UserApp.Domain.{name}s;
+        using UserApp.Application.Common;
+        using UserApp.Application.{name}s.Interfaces;
 
-namespace UserApp.Application.{name}s;
+        namespace UserApp.Application.{name}s;
 
-public class {name}Service : BaseService<{name}>, I{name}Service
-{{
-    public {name}Service(I{name}Repository repo) : base(repo)
-    {{
-    }}
-}}");
+        public class {name}Service : BaseService<{name}>, I{name}Service
+        {{
+            public {name}Service(I{name}Repository repo) : base(repo)
+            {{
+            }}
+        }}");
 
         // INTERFACE (🔥 FIXED: Domain added)
         File.WriteAllText(Path.Combine(interfaces, $"I{name}Service.cs"),
-$@"using UserApp.Application.Common;
-using UserApp.Domain.{name}s;
+        $@"using UserApp.Application.Common;
+        using UserApp.Domain.{name}s;
 
-namespace UserApp.Application.{name}s.Interfaces;
+        namespace UserApp.Application.{name}s.Interfaces;
 
-public interface I{name}Service : IBaseService<{name}>
-{{
-}}");
+        public interface I{name}Service : IBaseService<{name}>
+        {{
+        }}");
     }
 
     // ========================= INFRASTRUCTURE =========================
@@ -114,17 +114,17 @@ public interface I{name}Service : IBaseService<{name}>
         Directory.CreateDirectory(path);
 
         File.WriteAllText(Path.Combine(path, $"{name}Repository.cs"),
-$@"using UserApp.Domain.{name}s;
-using UserApp.Infrastructure.Persistence;
+        $@"using UserApp.Domain.{name}s;
+        using UserApp.Infrastructure.Persistence;
 
-namespace UserApp.Infrastructure.Persistence.Repositories;
+        namespace UserApp.Infrastructure.Persistence.Repositories;
 
-public class {name}Repository : BaseRepository<{name}>, I{name}Repository
-{{
-    public {name}Repository(AppDbContext db) : base(db)
-    {{
-    }}
-}}");
+        public class {name}Repository : BaseRepository<{name}>, I{name}Repository
+        {{
+            public {name}Repository(AppDbContext db) : base(db)
+            {{
+            }}
+        }}");
     }
 
     // ========================= WEB =========================
@@ -140,53 +140,53 @@ public class {name}Repository : BaseRepository<{name}>, I{name}Repository
 
         // MVC
         File.WriteAllText(Path.Combine(mvc, $"{name}Controller.cs"),
-$@"using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
-using UserApp.Application.{name}s.Interfaces;
-using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels.{name}s;
+        $@"using AutoMapper;
+        using Microsoft.AspNetCore.Mvc;
+        using UserApp.Application.{name}s.Interfaces;
+        using UserApp.Domain.{name}s;
+        using UserApp.Web.ViewModels.{name}s;
 
-namespace UserApp.Web.Controllers;
+        namespace UserApp.Web.Controllers;
 
-public class {name}Controller : BaseController<{name}, {name}ViewModel>
-{{
-    public {name}Controller(I{name}Service service, IMapper mapper)
-        : base(service, mapper)
-    {{
-    }}
-}}");
+        public class {name}Controller : BaseController<{name}, {name}ViewModel>
+        {{
+            public {name}Controller(I{name}Service service, IMapper mapper)
+                : base(service, mapper)
+            {{
+            }}
+        }}");
 
         // API
         File.WriteAllText(Path.Combine(api, $"{name}ApiController.cs"),
-$@"using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using UserApp.Application.{name}s.Interfaces;
-using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels.{name}s;
+        $@"using AutoMapper;
+        using Microsoft.AspNetCore.Authorization;
+        using Microsoft.AspNetCore.Mvc;
+        using UserApp.Application.{name}s.Interfaces;
+        using UserApp.Domain.{name}s;
+        using UserApp.Web.ViewModels.{name}s;
 
-namespace UserApp.Web.Controllers.Api;
+        namespace UserApp.Web.Controllers.Api;
 
-[ApiController]
-[Route(""api/[controller]"")]
-[Authorize]
-public class {name}ApiController : BaseApiController<{name}, {name}ViewModel>
-{{
-    public {name}ApiController(I{name}Service service, IMapper mapper)
-        : base(service, mapper)
-    {{
-    }}
-}}");
+        [ApiController]
+        [Route(""api/[controller]"")]
+        [Authorize]
+        public class {name}ApiController : BaseApiController<{name}, {name}ViewModel>
+        {{
+            public {name}ApiController(I{name}Service service, IMapper mapper)
+                : base(service, mapper)
+            {{
+            }}
+        }}");
 
         // ViewModel
         File.WriteAllText(Path.Combine(vm, $"{name}ViewModel.cs"),
-$@"namespace UserApp.Web.ViewModels.{name}s;
+        $@"namespace UserApp.Web.ViewModels.{name}s;
 
-public class {name}ViewModel
-{{
-    public Guid Id {{ get; set; }}
-    public string Name {{ get; set; }} = string.Empty;
-}}");
+        public class {name}ViewModel
+        {{
+            public Guid Id {{ get; set; }}
+            public string Name {{ get; set; }} = string.Empty;
+        }}");
     }
 
     // ========================= MAPPING =========================
@@ -198,10 +198,10 @@ public class {name}ViewModel
         EnsureUsing(file, $"using UserApp.Web.ViewModels.{name}s;");
 
         var inject =
-$@"
+        $@"
         CreateMap<{name}, {name}ViewModel>();
         CreateMap<{name}ViewModel, {name}>();
-";
+        ";
 
         CodeInjector.InjectBetween(
             file,
@@ -219,9 +219,9 @@ $@"
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
 
         var inject =
-$@"
-    public DbSet<{name}> {name}s => Set<{name}>();
-";
+        $@"
+            public DbSet<{name}> {name}s => Set<{name}>();
+        ";
 
         CodeInjector.InjectBetween(
             file,

@@ -1,0 +1,35 @@
+@model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.Payments.PaymentViewModel>
+
+@{
+    ViewData["Title"] = "Payments";
+}
+
+<h2>Payments</h2>
+
+<a class="btn btn-primary" href="/Payment/Create">Create New</a>
+
+<table class="table table-bordered mt-3">
+    <thead>
+        <tr>
+            <th>Id</th>
+            <th>Amount</th>
+            <th>Description</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+    @foreach (var item in Model.Items)
+    {
+        <tr>
+            <td>@item.Id</td>
+            <td>@item.Amount</td>
+            <td>@item.Description</td>
+            <td>
+                <a class="btn btn-sm btn-warning" href="/Payment/Edit/@item.Id">Edit</a>
+                <a class="btn btn-sm btn-danger" href="/Payment/Delete/@item.Id">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>

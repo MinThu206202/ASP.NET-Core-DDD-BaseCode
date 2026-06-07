@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using UserApp.Domain.Users;
 using UserApp.Domain.Products;
 using UserApp.Infrastructure.Persistence.Configurations;
+using UserApp.Domain.Payments;
 
 namespace UserApp.Infrastructure.Persistence;
 
@@ -19,7 +20,7 @@ public class AppDbContext : DbContext
 
     // ==================== AUTO GENERATED DBSets ====================
     // <AUTO-DBSETS-START>
-
+    public DbSet<Payment> Payments => Set<Payment>();
 
     // <AUTO-DBSETS-END>
 
