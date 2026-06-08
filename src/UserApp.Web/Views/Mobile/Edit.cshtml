@@ -1,0 +1,31 @@
+
+@model UserApp.Web.ViewModels.MobileViewModel
+
+<h2>Edit Mobile</h2>
+
+<form asp-action="Edit" method="post">
+
+    <input type="hidden" asp-for="Id" />
+
+
+<div class="form-group">
+    <label>Name</label>
+    <input asp-for="Name" class="form-control" />
+</div>
+
+
+<div class="form-group">
+    <label>Price</label>
+    <input asp-for="Price" class="form-control" />
+</div>
+
+
+<div class="form-group">
+    <label>stock</label>
+    <input asp-for="stock" class="form-control" />
+</div>
+
+
+
+    <button type="submit" class="btn btn-primary">Update</button>
+</form>

@@ -35,7 +35,8 @@ public class ModuleGeneratorService : IModuleGeneratorService
         GenerateDomainRepository(name);
         GenerateApplication(name);
         GenerateInfrastructure(name);
-        GenerateWeb(name);
+        GenerateWeb(name, fields);
+        GenerateViews(name, fields);
 
         UpdateMappingProfile(name);
         UpdateDbContext(name);
@@ -44,22 +45,100 @@ public class ModuleGeneratorService : IModuleGeneratorService
         // EF MIGRATION
         if (runMigration)
         {
-            RunCommand("dotnet",
-                $"ef migrations add {name}_{DateTime.Now:yyyyMMddHHmmss} " +
-                $"--project {InfraProject} " +
-                $"--startup-project {WebProject}");
+            var migrationName = $"{name}_{DateTime.Now:yyyyMMddHHmmss}";
+
+            if (!MigrationExists(migrationName))
+            {
+                RunCommand("dotnet",
+                    $"ef migrations add {migrationName} " +
+                    $"--project {InfraProject} " +
+                    $"--startup-project {WebProject}");
+            }
         }
 
         // DB UPDATE
         if (runDbUpdate)
         {
-            RunCommand("dotnet",
-                $"ef database update " +
-                $"--project {InfraProject} " +
-                $"--startup-project {WebProject}");
+            if (HasPendingMigrations())
+            {
+                RunCommand("dotnet",
+                    $"ef database update " +
+                    $"--project {InfraProject} " +
+                    $"--startup-project {WebProject}");
+            }
         }
 
         return Task.CompletedTask;
+    }
+    // ========================= Migrations =========================
+
+    private bool MigrationExists(string migrationName)
+    {
+        var migrationsPath = Path.Combine(
+            _srcPath,
+            "UserApp.Infrastructure/Persistence/Migrations"
+        );
+
+        if (!Directory.Exists(migrationsPath))
+            return false;
+
+        return Directory.GetFiles(migrationsPath)
+            .Any(x => Path.GetFileName(x).Contains(migrationName));
+    }
+
+    private string? GetLastMigration()
+    {
+        var migrationsPath = Path.Combine(
+            _srcPath,
+            "UserApp.Infrastructure/Persistence/Migrations"
+        );
+
+        if (!Directory.Exists(migrationsPath))
+            return null;
+
+        var migrationFiles = Directory.GetFiles(migrationsPath, "*.cs")
+            .Select(Path.GetFileNameWithoutExtension)
+            .OrderByDescending(x => x)
+            .ToList();
+
+        return migrationFiles.FirstOrDefault();
+    }
+
+    private bool HasPendingMigrations()
+    {
+        var result = RunCommandCapture(
+            "dotnet",
+            $"ef migrations list --project {InfraProject} --startup-project {WebProject}"
+        );
+
+        // crude but effective check
+        return result.Contains("(Pending)");
+    }
+
+    private string RunCommandCapture(string fileName, string arguments)
+    {
+        var process = new System.Diagnostics.Process
+        {
+            StartInfo = new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = fileName,
+                Arguments = arguments,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                WorkingDirectory = _solutionRoot
+            }
+        };
+
+        process.Start();
+
+        var output = process.StandardOutput.ReadToEnd();
+        var error = process.StandardError.ReadToEnd();
+
+        process.WaitForExit();
+
+        return output + "\n" + error;
     }
 
     // ========================= SOLUTION ROOT =========================
@@ -201,7 +280,7 @@ public class {name}Repository : BaseRepository<{name}>, I{name}Repository
     }
 
     // ========================= WEB =========================
-    private void GenerateWeb(string name)
+    private void GenerateWeb(string name, List<ModuleFieldDto> fields)
     {
         var mvc = Path.Combine(_srcPath, "UserApp.Web/Controllers");
         var api = Path.Combine(_srcPath, "UserApp.Web/Controllers/Api");
@@ -217,7 +296,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using UserApp.Application.{name}s.Interfaces;
 using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels.{name}s;
+using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers;
 
@@ -236,7 +315,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using UserApp.Application.{name}s.Interfaces;
 using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels.{name}s;
+using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers.Api;
 
@@ -252,16 +331,189 @@ public class {name}ApiController : BaseApiController<{name}, {name}ViewModel>
 }}");
 
         File.WriteAllText(Path.Combine(vm, $"{name}ViewModel.cs"),
-        $@"
-namespace UserApp.Web.ViewModels.{name}s;
+$@"
+namespace UserApp.Web.ViewModels;
 
 public class {name}ViewModel
 {{
     public Guid Id {{ get; set; }}
-    public string Name {{ get; set; }} = string.Empty;
-}}");
+
+{GenerateViewModelFields(fields)}
+}}
+");
     }
 
+    private string GenerateViewModelFields(List<ModuleFieldDto> fields)
+    {
+        var sb = new StringBuilder();
+
+        foreach (var f in fields)
+        {
+            if (f.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            var nullable = f.IsNullable && f.Type != "string" ? "?" : "";
+
+            if (f.Type == "string")
+            {
+                sb.AppendLine($"    public string {f.Name} {{ get; set; }} = string.Empty;");
+            }
+            else
+            {
+                sb.AppendLine($"    public {f.Type}{nullable} {f.Name} {{ get; set; }}");
+            }
+        }
+
+        return sb.ToString();
+    }
+
+
+    // ========================= VIEWS GENERATION =========================
+    private void GenerateViews(string name, List<ModuleFieldDto> fields)
+    {
+        var viewPath = Path.Combine(_srcPath, $"UserApp.Web/Views/{name}");
+        Directory.CreateDirectory(viewPath);
+
+        GenerateIndexView(name, viewPath, fields);
+        GenerateCreateView(name, viewPath, fields);
+        GenerateEditView(name, viewPath, fields);
+    }
+
+
+    private void GenerateIndexView(string name, string path, List<ModuleFieldDto> fields)
+    {
+        var file = Path.Combine(path, "Index.cshtml");
+
+        var columns = new StringBuilder();
+        var rows = new StringBuilder();
+
+        foreach (var f in fields)
+        {
+            if (f.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            columns.AppendLine($"<th>{f.Name}</th>");
+            rows.AppendLine($"<td>@p.{f.Name}</td>");
+        }
+
+        var content = $@"
+@model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.{name}ViewModel>
+
+<h2>{name}s</h2>
+
+<a asp-action=""Create"" class=""btn btn-success"">Create {name}</a>
+
+<table class=""table"">
+    <thead>
+        <tr>
+            <th>Id</th>
+{columns}
+            <th>Actions</th>
+        </tr>
+    </thead>
+
+    <tbody>
+@foreach (var p in Model.Items)
+{{
+    <tr>
+        <td>@p.Id</td>
+{rows}
+        <td>
+            <a asp-action=""Edit""
+               asp-route-id=""@p.Id""
+               class=""btn btn-sm btn-primary"">
+                Edit
+            </a>
+
+            <form asp-action=""Delete""
+                  asp-route-id=""@p.Id""
+                  method=""post""
+                  style=""display:inline""
+                  onsubmit=""return confirm('Are you sure you want to delete this?');"">
+                <button type=""submit"" class=""btn btn-sm btn-danger"">
+                    Delete
+                </button>
+            </form>
+        </td>
+    </tr>
+}}
+    </tbody>
+</table>
+";
+
+        File.WriteAllText(file, content);
+    }
+    private void GenerateCreateView(string name, string path, List<ModuleFieldDto> fields)
+    {
+        var file = Path.Combine(path, "Create.cshtml");
+
+        var inputs = new StringBuilder();
+
+        foreach (var f in fields)
+        {
+            if (f.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            inputs.AppendLine($@"
+<div class=""form-group"">
+    <label>{f.Name}</label>
+    <input asp-for=""{f.Name}"" class=""form-control"" />
+</div>
+");
+        }
+
+        var content = $@"
+@model UserApp.Web.ViewModels.{name}ViewModel
+
+<h2>Create {name}</h2>
+
+<form asp-action=""Create"" method=""post"">
+
+{inputs}
+
+    <button type=""submit"" class=""btn btn-success"">Save</button>
+</form>
+";
+
+        File.WriteAllText(file, content);
+    }
+
+    private void GenerateEditView(string name, string path, List<ModuleFieldDto> fields)
+    {
+        var file = Path.Combine(path, "Edit.cshtml");
+
+        var inputs = new StringBuilder();
+
+        foreach (var f in fields)
+        {
+            if (f.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
+                continue;
+
+            inputs.AppendLine($@"
+<div class=""form-group"">
+    <label>{f.Name}</label>
+    <input asp-for=""{f.Name}"" class=""form-control"" />
+</div>
+");
+        }
+
+        var content = $@"
+@model UserApp.Web.ViewModels.{name}ViewModel
+
+<h2>Edit {name}</h2>
+
+<form asp-action=""Edit"" method=""post"">
+
+    <input type=""hidden"" asp-for=""Id"" />
+
+{inputs}
+
+    <button type=""submit"" class=""btn btn-primary"">Update</button>
+</form>
+";
+
+        File.WriteAllText(file, content);
+    }
     // ========================= DB CONTEXT =========================
     private void UpdateDbContext(string name)
     {
@@ -278,7 +530,6 @@ public DbSet<{name}> {name}s => Set<{name}>();
             "// <AUTO-DBSETS-END>",
             inject);
     }
-
     // ========================= PROGRAM CS =========================
     private void UpdateProgramCs(string name)
     {
@@ -306,7 +557,7 @@ public DbSet<{name}> {name}s => Set<{name}>();
         var file = Path.Combine(_srcPath, "UserApp.Web/Mapping/MappingProfile.cs");
 
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
-        EnsureUsing(file, $"using UserApp.Web.ViewModels.{name}s;");
+        // EnsureUsing(file, $"using UserApp.Web.ViewModels.{name}s;");
 
         CodeInjector.InjectBetween(file,
             "// <AUTO-MAPPINGS-START>",
@@ -340,18 +591,24 @@ CreateMap<{name}ViewModel, {name}>();
 
         process.WaitForExit();
 
+
+
         if (process.ExitCode != 0)
         {
             throw new Exception($"""
-EF COMMAND FAILED:
+❌ EF COMMAND FAILED
 
+COMMAND:
 {fileName} {arguments}
 
-ERROR:
-{error}
+EXIT CODE:
+{process.ExitCode}
 
-OUTPUT:
+STDOUT:
 {output}
+
+STDERR:
+{error}
 """);
         }
 

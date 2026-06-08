@@ -3,8 +3,7 @@ using UserApp.Domain.Users;
 using UserApp.Domain.Products;
 using UserApp.Web.ViewModels;
 using UserApp.Application.Users.DTOs;
-using UserApp.Domain.Payments;
-using UserApp.Web.ViewModels.Payments;
+using UserApp.Domain.Mobiles;
 
 
 namespace UserApp.Web.Mapping;
@@ -32,9 +31,9 @@ public class MappingProfile : Profile
         // ==================== AUTO GENERATED MAPPINGS ====================
         // <AUTO-MAPPINGS-START>
 
-        CreateMap<Payment, PaymentViewModel>();
+CreateMap<Mobile, MobileViewModel>();
+CreateMap<MobileViewModel, Mobile>();
 
-
-        // <AUTO-MAPPINGS-END>
+// <AUTO-MAPPINGS-END>
     }
 }

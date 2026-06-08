@@ -13,14 +13,15 @@ using UserApp.Application.Products.Interfaces;
 using UserApp.Application.Products;
 using UserApp.Application.Users.Interfaces;
 using UserApp.Infrastructure.Persistence.Repositories;
-using UserApp.Application.Payments.Interfaces;
-using UserApp.Application.Payments;
-using UserApp.Domain.Payments;
+
 using UserApp.Infrastructure.Persistence.Repositories;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using UserApp.Domain.Mobiles;
+using UserApp.Application.Mobiles;
+using UserApp.Application.Mobiles.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -46,6 +47,7 @@ builder.Services.AddAutoMapper(typeof(MappingProfile));
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
 // <AUTO-REPOSITORIES-START>
+builder.Services.AddScoped<IMobileRepository, MobileRepository>();
 // <AUTO-REPOSITORIES-END>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -57,6 +59,7 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
 
 // <AUTO-SERVICES-START>
+builder.Services.AddScoped<IMobileService, MobileService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();
@@ -67,8 +70,6 @@ builder.Services.AddScoped<
     UserApp.Application.Common.Interfaces.IModuleGeneratorService,
     UserApp.Infrastructure.Services.ModuleGeneratorService>();
 
-builder.Services.AddScoped<IPaymentService, PaymentService>();
-builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 
 // ------------------------------------------------
 // JWT AUTHENTICATION (IMPORTANT FIX)
