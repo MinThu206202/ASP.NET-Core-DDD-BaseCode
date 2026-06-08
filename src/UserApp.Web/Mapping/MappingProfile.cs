@@ -3,7 +3,6 @@ using UserApp.Domain.Users;
 using UserApp.Domain.Products;
 using UserApp.Web.ViewModels;
 using UserApp.Application.Users.DTOs;
-using UserApp.Domain.Mobiles;
 
 
 namespace UserApp.Web.Mapping;
@@ -28,12 +27,14 @@ public class MappingProfile : Profile
         CreateMap<ProductViewModel, Product>()
             .ForMember(dest => dest.Id, opt => opt.Ignore());
 
-        // ==================== AUTO GENERATED MAPPINGS ====================
+
+        // ================= AUTO MAPPINGS =================
         // <AUTO-MAPPINGS-START>
 
-CreateMap<Mobile, MobileViewModel>();
-CreateMap<MobileViewModel, Mobile>();
 
-// <AUTO-MAPPINGS-END>
+
+
+        // <AUTO-MAPPINGS-END>
+
     }
 }

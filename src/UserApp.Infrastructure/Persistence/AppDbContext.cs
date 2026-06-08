@@ -2,7 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using UserApp.Domain.Users;
 using UserApp.Domain.Products;
 using UserApp.Infrastructure.Persistence.Configurations;
-using UserApp.Domain.Mobiles;
+
+
 
 namespace UserApp.Infrastructure.Persistence;
 
@@ -18,12 +19,9 @@ public class AppDbContext : DbContext
     public DbSet<Product> Products => Set<Product>();
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
 
-    // ==================== AUTO GENERATED DBSets ====================
+    // ================= AUTO DBSets =================
     // <AUTO-DBSETS-START>
-
-public DbSet<Mobile> Mobiles => Set<Mobile>();
-
-// <AUTO-DBSETS-END>
+    // <AUTO-DBSETS-END>
 
 
 

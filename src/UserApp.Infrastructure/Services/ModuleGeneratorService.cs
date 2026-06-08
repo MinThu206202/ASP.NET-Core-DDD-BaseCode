@@ -29,6 +29,8 @@ public class ModuleGeneratorService : IModuleGeneratorService
         bool runDbUpdate
     )
     {
+        Console.WriteLine($"Generating module: {moduleName}");
+
         var name = Capitalize(moduleName);
 
         GenerateDomain(name, fields);
@@ -42,33 +44,49 @@ public class ModuleGeneratorService : IModuleGeneratorService
         UpdateDbContext(name);
         UpdateProgramCs(name);
 
-        // EF MIGRATION
+        // ========================= EF MIGRATION =========================
         if (runMigration)
         {
-            var migrationName = $"{name}_{DateTime.Now:yyyyMMddHHmmss}";
+            var migrationName = $"{name}_Auto";
 
-            if (!MigrationExists(migrationName))
-            {
-                RunCommand("dotnet",
-                    $"ef migrations add {migrationName} " +
-                    $"--project {InfraProject} " +
-                    $"--startup-project {WebProject}");
-            }
+            RunCommand("dotnet",
+                $"ef migrations add {migrationName} " +
+                $"--project {InfraProject} " +
+                $"--startup-project {WebProject}");
         }
 
-        // DB UPDATE
+        // ========================= DB UPDATE =========================
         if (runDbUpdate)
         {
-            if (HasPendingMigrations())
-            {
-                RunCommand("dotnet",
-                    $"ef database update " +
-                    $"--project {InfraProject} " +
-                    $"--startup-project {WebProject}");
-            }
+            RunCommand("dotnet",
+                $"ef database update " +
+                $"--project {InfraProject} " +
+                $"--startup-project {WebProject}");
         }
 
+        Console.WriteLine($"Module {moduleName} generated successfully");
+
         return Task.CompletedTask;
+    }
+
+    private void InsertIntoBlock(string file, string start, string end, string content)
+    {
+        var lines = File.ReadAllLines(file).ToList();
+
+        int startIndex = lines.FindIndex(x => x.Contains(start));
+        int endIndex = lines.FindIndex(x => x.Contains(end));
+
+        if (startIndex == -1 || endIndex == -1)
+            throw new Exception("Marker not found");
+
+        var block = lines.Skip(startIndex + 1).Take(endIndex - startIndex - 1);
+
+        // ✅ prevent duplicate
+        if (block.Any(x => x.Trim() == content.Trim()))
+            return;
+
+        lines.Insert(endIndex, content);
+        File.WriteAllLines(file, lines);
     }
     // ========================= Migrations =========================
 
@@ -104,16 +122,16 @@ public class ModuleGeneratorService : IModuleGeneratorService
         return migrationFiles.FirstOrDefault();
     }
 
-    private bool HasPendingMigrations()
-    {
-        var result = RunCommandCapture(
-            "dotnet",
-            $"ef migrations list --project {InfraProject} --startup-project {WebProject}"
-        );
+    // private bool HasPendingMigrations()
+    // {
+    //     var result = RunCommandCapture(
+    //         "dotnet",
+    //         $"ef migrations list --project {InfraProject} --startup-project {WebProject}"
+    //     );
 
-        // crude but effective check
-        return result.Contains("(Pending)");
-    }
+    //     // crude but effective check
+    //     return result.Contains("(Pending)");
+    // }
 
     private string RunCommandCapture(string fileName, string arguments)
     {
@@ -521,14 +539,20 @@ public class ModuleGeneratorService : IModuleGeneratorService
 
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
 
-        var inject = $@"
-        public DbSet<{name}> {name}s => Set<{name}>();
-        ";
+        var content = File.ReadAllText(file);
 
-        CodeInjector.InjectBetween(file,
-            "// <AUTO-DBSETS-START>",
-            "// <AUTO-DBSETS-END>",
-            inject);
+        var dbSetLine = $"public DbSet<{name}> {name}s => Set<{name}>();";
+
+        // ✅ STRICT CHECK (fix plural bugs + spacing issues)
+        if (content.Contains($"DbSet<{name}> {name}s"))
+            return;
+
+        InsertIntoBlock(
+    Path.Combine(_srcPath, "UserApp.Infrastructure/Persistence/AppDbContext.cs"),
+    "// <AUTO-DBSETS-START>",
+    "// <AUTO-DBSETS-END>",
+    dbSetLine
+);
     }
     // ========================= PROGRAM CS =========================
     private void UpdateProgramCs(string name)
@@ -538,17 +562,32 @@ public class ModuleGeneratorService : IModuleGeneratorService
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
         EnsureUsing(file, $"using UserApp.Application.{name}s;");
         EnsureUsing(file, $"using UserApp.Application.{name}s.Interfaces;");
-        EnsureUsing(file, $"using UserApp.Infrastructure.Persistence.Repositories;");
 
-        CodeInjector.InjectBetween(file,
-            "// <AUTO-REPOSITORIES-START>",
-            "// <AUTO-REPOSITORIES-END>",
-            $@"builder.Services.AddScoped<I{name}Repository, {name}Repository>();");
+        var content = File.ReadAllText(file);
 
-        CodeInjector.InjectBetween(file,
-            "// <AUTO-SERVICES-START>",
-            "// <AUTO-SERVICES-END>",
-            $@"builder.Services.AddScoped<I{name}Service, {name}Service>();");
+        var repoLine = $"builder.Services.AddScoped<I{name}Repository, {name}Repository>();";
+        var serviceLine = $"builder.Services.AddScoped<I{name}Service, {name}Service>();";
+
+        // 🔥 FIX: stronger check (trim + ignore spaces)
+        if (!content.Replace(" ", "").Contains(repoLine.Replace(" ", "")))
+        {
+            InsertIntoBlock(
+    Path.Combine(_srcPath, "UserApp.Web/Program.cs"),
+    "// <AUTO-REPOSITORIES-START>",
+    "// <AUTO-REPOSITORIES-END>",
+    repoLine
+);
+        }
+
+        if (!content.Replace(" ", "").Contains(serviceLine.Replace(" ", "")))
+        {
+            InsertIntoBlock(
+    Path.Combine(_srcPath, "UserApp.Web/Program.cs"),
+    "// <AUTO-SERVICES-START>",
+    "// <AUTO-SERVICES-END>",
+    serviceLine
+);
+        }
     }
 
     // ========================= MAPPING =========================
@@ -557,15 +596,26 @@ public class ModuleGeneratorService : IModuleGeneratorService
         var file = Path.Combine(_srcPath, "UserApp.Web/Mapping/MappingProfile.cs");
 
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
-        // EnsureUsing(file, $"using UserApp.Web.ViewModels.{name}s;");
+        EnsureUsing(file, $"using UserApp.Web.ViewModels;");
 
-        CodeInjector.InjectBetween(file,
-            "// <AUTO-MAPPINGS-START>",
-            "// <AUTO-MAPPINGS-END>",
-            $@"
-        CreateMap<{name}, {name}ViewModel>();
-        CreateMap<{name}ViewModel, {name}>();
-        ");
+        var content = File.ReadAllText(file);
+
+        var exists = content.Contains($"CreateMap<{name}, {name}ViewModel>");
+
+        if (exists)
+            return;
+
+        var map = $@"
+CreateMap<{name}, {name}ViewModel>();
+CreateMap<{name}ViewModel, {name}>();
+";
+
+        InsertIntoBlock(
+    Path.Combine(_srcPath, "UserApp.Web/Mapping/MappingProfile.cs"),
+    "// <AUTO-MAPPINGS-START>",
+    "// <AUTO-MAPPINGS-END>",
+    map
+);
     }
 
     private void RunCommand(string fileName, string arguments)
