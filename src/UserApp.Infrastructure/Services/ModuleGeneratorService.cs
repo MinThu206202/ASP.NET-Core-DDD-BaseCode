@@ -176,27 +176,27 @@ public class ModuleGeneratorService : IModuleGeneratorService
             if (f.Type == "string")
             {
                 props.AppendLine($@"
-    public string {f.Name} {{ get; set; }} = string.Empty;
-");
+                public string {f.Name} {{ get; set; }} = string.Empty;
+            ");
             }
             else
             {
                 props.AppendLine($@"
-    public {f.Type}{nullable} {f.Name} {{ get; set; }}
-");
+                public {f.Type}{nullable} {f.Name} {{ get; set; }}
+            ");
             }
         }
 
         var entity = $@"
-using UserApp.Domain.Common;
+        using UserApp.Domain.Common;
 
-namespace UserApp.Domain.{name}s;
+        namespace UserApp.Domain.{name}s;
 
-public class {name} : Entity<Guid>
-{{
-{props}
-}}
-";
+        public class {name} : Entity<Guid>
+        {{
+        {props}
+        }}
+        ";
 
         File.WriteAllText(Path.Combine(path, $"{name}.cs"), entity);
     }
@@ -210,14 +210,14 @@ public class {name} : Entity<Guid>
         var file = Path.Combine(path, $"I{name}Repository.cs");
 
         var content = $@"
-using UserApp.Domain.Common;
+        using UserApp.Domain.Common;
 
-namespace UserApp.Domain.{name}s;
+        namespace UserApp.Domain.{name}s;
 
-public interface I{name}Repository : IBaseRepository<{name}>
-{{
-}}
-";
+        public interface I{name}Repository : IBaseRepository<{name}>
+        {{
+        }}
+        ";
 
         File.WriteAllText(file, content);
     }
@@ -233,29 +233,29 @@ public interface I{name}Repository : IBaseRepository<{name}>
 
         File.WriteAllText(Path.Combine(path, $"{name}Service.cs"),
         $@"
-using UserApp.Domain.{name}s;
-using UserApp.Application.Common;
-using UserApp.Application.{name}s.Interfaces;
+        using UserApp.Domain.{name}s;
+        using UserApp.Application.Common;
+        using UserApp.Application.{name}s.Interfaces;
 
-namespace UserApp.Application.{name}s;
+        namespace UserApp.Application.{name}s;
 
-public class {name}Service : BaseService<{name}>, I{name}Service
-{{
-    public {name}Service(I{name}Repository repo) : base(repo)
-    {{
-    }}
-}}");
+        public class {name}Service : BaseService<{name}>, I{name}Service
+        {{
+            public {name}Service(I{name}Repository repo) : base(repo)
+            {{
+            }}
+        }}");
 
         File.WriteAllText(Path.Combine(interfaces, $"I{name}Service.cs"),
         $@"
-using UserApp.Application.Common;
-using UserApp.Domain.{name}s;
+        using UserApp.Application.Common;
+        using UserApp.Domain.{name}s;
 
-namespace UserApp.Application.{name}s.Interfaces;
+        namespace UserApp.Application.{name}s.Interfaces;
 
-public interface I{name}Service : IBaseService<{name}>
-{{
-}}");
+        public interface I{name}Service : IBaseService<{name}>
+        {{
+        }}");
     }
 
     // ========================= INFRASTRUCTURE =========================
@@ -266,17 +266,17 @@ public interface I{name}Service : IBaseService<{name}>
 
         File.WriteAllText(Path.Combine(path, $"{name}Repository.cs"),
         $@"
-using UserApp.Domain.{name}s;
-using UserApp.Infrastructure.Persistence;
+        using UserApp.Domain.{name}s;
+        using UserApp.Infrastructure.Persistence;
 
-namespace UserApp.Infrastructure.Persistence.Repositories;
+        namespace UserApp.Infrastructure.Persistence.Repositories;
 
-public class {name}Repository : BaseRepository<{name}>, I{name}Repository
-{{
-    public {name}Repository(AppDbContext db) : base(db)
-    {{
-    }}
-}}");
+        public class {name}Repository : BaseRepository<{name}>, I{name}Repository
+        {{
+            public {name}Repository(AppDbContext db) : base(db)
+            {{
+            }}
+        }}");
     }
 
     // ========================= WEB =========================
@@ -292,55 +292,55 @@ public class {name}Repository : BaseRepository<{name}>, I{name}Repository
 
         File.WriteAllText(Path.Combine(mvc, $"{name}Controller.cs"),
         $@"
-using AutoMapper;
-using Microsoft.AspNetCore.Mvc;
-using UserApp.Application.{name}s.Interfaces;
-using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels;
+        using AutoMapper;
+        using Microsoft.AspNetCore.Mvc;
+        using UserApp.Application.{name}s.Interfaces;
+        using UserApp.Domain.{name}s;
+        using UserApp.Web.ViewModels;
 
-namespace UserApp.Web.Controllers;
+        namespace UserApp.Web.Controllers;
 
-public class {name}Controller : BaseController<{name}, {name}ViewModel>
-{{
-    public {name}Controller(I{name}Service service, IMapper mapper)
-        : base(service, mapper)
-    {{
-    }}
-}}");
+        public class {name}Controller : BaseController<{name}, {name}ViewModel>
+        {{
+            public {name}Controller(I{name}Service service, IMapper mapper)
+                : base(service, mapper)
+            {{
+            }}
+        }}");
 
         File.WriteAllText(Path.Combine(api, $"{name}ApiController.cs"),
         $@"
-using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using UserApp.Application.{name}s.Interfaces;
-using UserApp.Domain.{name}s;
-using UserApp.Web.ViewModels;
+        using AutoMapper;
+        using Microsoft.AspNetCore.Authorization;
+        using Microsoft.AspNetCore.Mvc;
+        using UserApp.Application.{name}s.Interfaces;
+        using UserApp.Domain.{name}s;
+        using UserApp.Web.ViewModels;
 
-namespace UserApp.Web.Controllers.Api;
+        namespace UserApp.Web.Controllers.Api;
 
-[ApiController]
-[Route(""api/[controller]"")]
-[Authorize]
-public class {name}ApiController : BaseApiController<{name}, {name}ViewModel>
-{{
-    public {name}ApiController(I{name}Service service, IMapper mapper)
-        : base(service, mapper)
-    {{
-    }}
-}}");
+        [ApiController]
+        [Route(""api/[controller]"")]
+        [Authorize]
+        public class {name}ApiController : BaseApiController<{name}, {name}ViewModel>
+        {{
+            public {name}ApiController(I{name}Service service, IMapper mapper)
+                : base(service, mapper)
+            {{
+            }}
+        }}");
 
         File.WriteAllText(Path.Combine(vm, $"{name}ViewModel.cs"),
-$@"
-namespace UserApp.Web.ViewModels;
+        $@"
+        namespace UserApp.Web.ViewModels;
 
-public class {name}ViewModel
-{{
-    public Guid Id {{ get; set; }}
+        public class {name}ViewModel
+        {{
+            public Guid Id {{ get; set; }}
 
-{GenerateViewModelFields(fields)}
-}}
-");
+        {GenerateViewModelFields(fields)}
+        }}
+        ");
     }
 
     private string GenerateViewModelFields(List<ModuleFieldDto> fields)
@@ -397,49 +397,49 @@ public class {name}ViewModel
         }
 
         var content = $@"
-@model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.{name}ViewModel>
+        @model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.{name}ViewModel>
 
-<h2>{name}s</h2>
+        <h2>{name}s</h2>
 
-<a asp-action=""Create"" class=""btn btn-success"">Create {name}</a>
+        <a asp-action=""Create"" class=""btn btn-success"">Create {name}</a>
 
-<table class=""table"">
-    <thead>
-        <tr>
-            <th>Id</th>
-{columns}
-            <th>Actions</th>
-        </tr>
-    </thead>
+        <table class=""table"">
+            <thead>
+                <tr>
+                    <th>Id</th>
+        {columns}
+                    <th>Actions</th>
+                </tr>
+            </thead>
 
-    <tbody>
-@foreach (var p in Model.Items)
-{{
-    <tr>
-        <td>@p.Id</td>
-{rows}
-        <td>
-            <a asp-action=""Edit""
-               asp-route-id=""@p.Id""
-               class=""btn btn-sm btn-primary"">
-                Edit
-            </a>
+            <tbody>
+        @foreach (var p in Model.Items)
+        {{
+            <tr>
+                <td>@p.Id</td>
+                {rows}
+                <td>
+                    <a asp-action=""Edit""
+                    asp-route-id=""@p.Id""
+                    class=""btn btn-sm btn-primary"">
+                        Edit
+                    </a>
 
-            <form asp-action=""Delete""
-                  asp-route-id=""@p.Id""
-                  method=""post""
-                  style=""display:inline""
-                  onsubmit=""return confirm('Are you sure you want to delete this?');"">
-                <button type=""submit"" class=""btn btn-sm btn-danger"">
-                    Delete
-                </button>
-            </form>
-        </td>
-    </tr>
-}}
-    </tbody>
-</table>
-";
+                    <form asp-action=""Delete""
+                        asp-route-id=""@p.Id""
+                        method=""post""
+                        style=""display:inline""
+                        onsubmit=""return confirm('Are you sure you want to delete this?');"">
+                        <button type=""submit"" class=""btn btn-sm btn-danger"">
+                            Delete
+                        </button>
+                    </form>
+                </td>
+            </tr>
+        }}
+            </tbody>
+        </table>
+        ";
 
         File.WriteAllText(file, content);
     }
@@ -455,25 +455,25 @@ public class {name}ViewModel
                 continue;
 
             inputs.AppendLine($@"
-<div class=""form-group"">
-    <label>{f.Name}</label>
-    <input asp-for=""{f.Name}"" class=""form-control"" />
-</div>
-");
+        <div class=""form-group"">
+            <label>{f.Name}</label>
+            <input asp-for=""{f.Name}"" class=""form-control"" />
+        </div>
+        ");
         }
 
         var content = $@"
-@model UserApp.Web.ViewModels.{name}ViewModel
+        @model UserApp.Web.ViewModels.{name}ViewModel
 
-<h2>Create {name}</h2>
+        <h2>Create {name}</h2>
 
-<form asp-action=""Create"" method=""post"">
+        <form asp-action=""Create"" method=""post"">
 
-{inputs}
+        {inputs}
 
-    <button type=""submit"" class=""btn btn-success"">Save</button>
-</form>
-";
+            <button type=""submit"" class=""btn btn-success"">Save</button>
+        </form>
+        ";
 
         File.WriteAllText(file, content);
     }
@@ -490,27 +490,27 @@ public class {name}ViewModel
                 continue;
 
             inputs.AppendLine($@"
-<div class=""form-group"">
-    <label>{f.Name}</label>
-    <input asp-for=""{f.Name}"" class=""form-control"" />
-</div>
-");
+        <div class=""form-group"">
+            <label>{f.Name}</label>
+            <input asp-for=""{f.Name}"" class=""form-control"" />
+        </div>
+        ");
         }
 
         var content = $@"
-@model UserApp.Web.ViewModels.{name}ViewModel
+        @model UserApp.Web.ViewModels.{name}ViewModel
 
-<h2>Edit {name}</h2>
+        <h2>Edit {name}</h2>
 
-<form asp-action=""Edit"" method=""post"">
+        <form asp-action=""Edit"" method=""post"">
 
-    <input type=""hidden"" asp-for=""Id"" />
+            <input type=""hidden"" asp-for=""Id"" />
 
-{inputs}
+        {inputs}
 
-    <button type=""submit"" class=""btn btn-primary"">Update</button>
-</form>
-";
+            <button type=""submit"" class=""btn btn-primary"">Update</button>
+        </form>
+        ";
 
         File.WriteAllText(file, content);
     }
@@ -522,8 +522,8 @@ public class {name}ViewModel
         EnsureUsing(file, $"using UserApp.Domain.{name}s;");
 
         var inject = $@"
-public DbSet<{name}> {name}s => Set<{name}>();
-";
+        public DbSet<{name}> {name}s => Set<{name}>();
+        ";
 
         CodeInjector.InjectBetween(file,
             "// <AUTO-DBSETS-START>",
@@ -563,9 +563,9 @@ public DbSet<{name}> {name}s => Set<{name}>();
             "// <AUTO-MAPPINGS-START>",
             "// <AUTO-MAPPINGS-END>",
             $@"
-CreateMap<{name}, {name}ViewModel>();
-CreateMap<{name}ViewModel, {name}>();
-");
+        CreateMap<{name}, {name}ViewModel>();
+        CreateMap<{name}ViewModel, {name}>();
+        ");
     }
 
     private void RunCommand(string fileName, string arguments)
@@ -596,20 +596,20 @@ CreateMap<{name}ViewModel, {name}>();
         if (process.ExitCode != 0)
         {
             throw new Exception($"""
-❌ EF COMMAND FAILED
+        ❌ EF COMMAND FAILED
 
-COMMAND:
-{fileName} {arguments}
+        COMMAND:
+        {fileName} {arguments}
 
-EXIT CODE:
-{process.ExitCode}
+        EXIT CODE:
+        {process.ExitCode}
 
-STDOUT:
-{output}
+        STDOUT:
+        {output}
 
-STDERR:
-{error}
-""");
+        STDERR:
+        {error}
+        """);
         }
 
         Console.WriteLine(output);
