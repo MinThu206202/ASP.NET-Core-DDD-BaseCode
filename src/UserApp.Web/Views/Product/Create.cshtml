@@ -1,8 +1,12 @@
 @model UserApp.Web.ViewModels.ProductViewModel
 
-<form asp-action="Create" method="post">
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+
     <input asp-for="Name" placeholder="Name" />
     <input asp-for="Price" placeholder="Price" />
+
+    <!-- IMAGE UPLOAD -->
+    <input type="file" name="file" />
 
     <button type="submit">Save</button>
 </form>

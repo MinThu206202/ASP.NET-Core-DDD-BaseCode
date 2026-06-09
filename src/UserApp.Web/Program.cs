@@ -11,10 +11,7 @@ using UserApp.Application.Users.Interfaces;
 using UserApp.Application.Users;
 using UserApp.Application.Products.Interfaces;
 using UserApp.Application.Products;
-using UserApp.Application.Users.Interfaces;
-using UserApp.Infrastructure.Persistence.Repositories;
 
-using UserApp.Infrastructure.Persistence.Repositories;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -25,6 +22,9 @@ using UserApp.Application.Funs.Interfaces;
 using UserApp.Domain.Tables;
 using UserApp.Application.Tables;
 using UserApp.Application.Tables.Interfaces;
+using UserApp.Application.Common.Interfaces;
+using UserApp.Infrastructure.Media;
+using UserApp.Domain.Media;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -61,6 +61,8 @@ builder.Services.AddScoped<ITableRepository, TableRepository>();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IMediaRepository, MediaRepository>();
+
 
 // ------------------------------------------------
 // SERVICES (Application Layer)
@@ -76,10 +78,13 @@ builder.Services.AddScoped<ITableService, TableService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
 builder.Services.AddScoped<
     UserApp.Application.Common.Interfaces.IModuleGeneratorService,
     UserApp.Infrastructure.Services.ModuleGeneratorService>();
+builder.Services.AddScoped<MediaStorage>();
+builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
 
 
 // ------------------------------------------------
@@ -134,6 +139,7 @@ var app = builder.Build();
 app.UseStaticFiles();
 
 app.UseRouting();
+
 
 // 2. 🔥 ACTIVATE CORS MIDDLEWARE (MUST BE PLACED IN THIS EXACT ORDER)
 app.UseCors(myAllowSpecificOrigins);

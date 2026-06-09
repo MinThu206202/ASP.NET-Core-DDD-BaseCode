@@ -1,15 +1,22 @@
+using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+
 namespace UserApp.Domain.Common;
 
 public interface IBaseRepository<T> where T : class
 {
-    Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default);
-    Task<List<T>> ListAsync(int skip, int take, CancellationToken ct = default);
-    Task<int> CountAsync(CancellationToken ct = default);
+    Task<T?> GetByIdAsync(Guid id);
 
-    Task AddAsync(T entity, CancellationToken ct = default);
+    Task<List<T>> ListAsync(int skip, int take);
+
+    Task<int> CountAsync();
+
+    Task AddAsync(T entity);
+
     void Update(T entity);
+
     void Remove(T entity);
 
-    Task<int> SaveChangesAsync(CancellationToken ct = default);
-
+    Task SaveChangesAsync();
 }

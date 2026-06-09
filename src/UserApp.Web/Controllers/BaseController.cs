@@ -59,14 +59,14 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(TViewModel vm)
+    public async Task<IActionResult> Create(TViewModel vm, IFormFile? file)
     {
         if (!ModelState.IsValid)
             return View("Create", vm);
 
         var entity = _mapper.Map<TEntity>(vm);
-        await _service.AddAsync(entity);
-        await _service.SaveAsync();   // 🔹 Add this line
+
+        await _service.AddAsync(entity, file); // ✅ PASS FILE HERE
 
         return RedirectToAction(nameof(Index));
     }
@@ -85,7 +85,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(Guid id, TViewModel vm)
+    public async Task<IActionResult> Edit(Guid id, TViewModel vm, IFormFile? file)
     {
         if (!ModelState.IsValid)
             return View("Edit", vm);
@@ -94,7 +94,8 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         if (entity == null) return NotFound();
 
         _mapper.Map(vm, entity);
-        await _service.UpdateAsync(entity);
+
+        await _service.UpdateAsync(entity, file);
 
         return RedirectToAction(nameof(Index));
     }

@@ -6,28 +6,22 @@
 
 <h2>Edit Product</h2>
 
-<form asp-action="Edit" method="post">
-    
-    <!-- Hidden Id -->
+<form asp-action="Edit" method="post" enctype="multipart/form-data">
+
     <input type="hidden" asp-for="Id" />
 
     <div class="mb-3">
-        <label asp-for="Name" class="form-label"></label>
+        <label asp-for="Name"></label>
         <input asp-for="Name" class="form-control" />
-        <span asp-validation-for="Name" class="text-danger"></span>
     </div>
 
     <div class="mb-3">
-        <label asp-for="Price" class="form-label"></label>
+        <label asp-for="Price"></label>
         <input asp-for="Price" class="form-control" />
-        <span asp-validation-for="Price" class="text-danger"></span>
     </div>
 
+    <!-- IMAGE -->
+    <input type="file" name="file" />
+
     <button type="submit" class="btn btn-primary">Update</button>
-    <a asp-action="Index" class="btn btn-secondary">Cancel</a>
-
 </form>
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}

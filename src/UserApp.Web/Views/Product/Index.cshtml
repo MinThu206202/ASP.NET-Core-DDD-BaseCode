@@ -9,36 +9,31 @@
         <tr>
             <th>Name</th>
             <th>Price</th>
+            <th>Image</th>
             <th>Actions</th>
         </tr>
     </thead>
 
     <tbody>
-        @foreach (var p in Model.Items)
-        {
-            <tr>
-                <td>@p.Name</td>
-                <td>@p.Price</td>
-                <td>
-                    <!-- Edit button -->
-                    <a asp-action="Edit"
-                       asp-route-id="@p.Id"
-                       class="btn btn-sm btn-primary">
-                        Edit
-                    </a>
+    @foreach (var p in Model.Items)
+    {
+        <tr>
+            <td>@p.Name</td>
+            <td>@p.Price</td>
 
-                    <!-- Delete button (POST form) -->
-                    <form asp-action="Delete" 
-                          asp-route-id="@p.Id" 
-                          method="post" 
-                          style="display:inline"
-                          onsubmit="return confirm('Are you sure you want to delete this product?');">
-                        <button type="submit" class="btn btn-sm btn-danger">
-                            Delete
-                        </button>
-                    </form>
-                </td>
-            </tr>
-        }
+            <!-- IMAGE -->
+            <td>
+                <td>@p.ImageUrl</td>
+            </td>
+
+            <td>
+                <a asp-action="Edit" asp-route-id="@p.Id">Edit</a>
+
+                <form asp-action="Delete" asp-route-id="@p.Id" method="post">
+                    <button>Delete</button>
+                </form>
+            </td>
+        </tr>
+    }
     </tbody>
 </table>

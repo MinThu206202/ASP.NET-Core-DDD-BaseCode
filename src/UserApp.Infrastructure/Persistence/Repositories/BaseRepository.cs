@@ -1,43 +1,51 @@
 using Microsoft.EntityFrameworkCore;
 using UserApp.Domain.Common;
 
-namespace UserApp.Infrastructure.Persistence;
+namespace UserApp.Infrastructure.Persistence.Repositories;
 
 public class BaseRepository<T> : IBaseRepository<T> where T : class
 {
     protected readonly AppDbContext _db;
-    protected readonly DbSet<T> Entities; // rename _set -> Entities
+    protected readonly DbSet<T> _set;
 
     public BaseRepository(AppDbContext db)
     {
         _db = db;
-        Entities = db.Set<T>();
+        _set = db.Set<T>();
     }
 
-    public virtual async Task<T?> GetByIdAsync(Guid id, CancellationToken ct = default)
-        => await Entities.FindAsync(new object[] { id }, ct);
-
-    public virtual async Task<List<T>> ListAsync(int skip, int take, CancellationToken ct = default)
+    public async Task<T?> GetByIdAsync(Guid id)
     {
-        return await Entities
-            .Where(x => EF.Property<DateTime?>(x, "DeletedAt") == null)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(ct);
+        return await _set.FindAsync(id);
     }
 
-    public virtual async Task<int> CountAsync(CancellationToken ct = default)
-        => await Entities.CountAsync(ct);
+    public async Task<List<T>> ListAsync(int skip, int take)
+    {
+        return await _set.Skip(skip).Take(take).ToListAsync();
+    }
 
-    public virtual async Task AddAsync(T entity, CancellationToken ct = default)
-        => await Entities.AddAsync(entity, ct);
+    public async Task<int> CountAsync()
+    {
+        return await _set.CountAsync();
+    }
 
-    public virtual void Update(T entity) => Entities.Update(entity);
+    public async Task AddAsync(T entity)
+    {
+        await _set.AddAsync(entity);
+    }
 
-    public virtual void Remove(T entity) => Entities.Remove(entity);
+    public void Update(T entity)
+    {
+        _set.Update(entity);
+    }
 
-    public virtual Task<int> SaveChangesAsync(CancellationToken ct = default)
-        => _db.SaveChangesAsync(ct);
+    public void Remove(T entity)
+    {
+        _set.Remove(entity);
+    }
 
-
+    public async Task SaveChangesAsync()
+    {
+        await _db.SaveChangesAsync();
+    }
 }
