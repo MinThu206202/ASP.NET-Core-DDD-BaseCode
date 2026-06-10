@@ -2,6 +2,8 @@ using AutoMapper;
 using UserApp.Domain.Users;
 using UserApp.Web.ViewModels;
 using UserApp.Application.Users.DTOs;
+using UserApp.Domain.Paps;
+using UserApp.Domain.Milks;
 
 
 namespace UserApp.Web.Mapping;
@@ -26,6 +28,10 @@ public class MappingProfile : Profile
 
 
 
+CreateMap<Pap, PapViewModel>();
+CreateMap<PapViewModel, Pap>();
+CreateMap<Milk, MilkViewModel>();
+CreateMap<MilkViewModel, Milk>();
         // <AUTO-MAPPINGS-END>
 
     }

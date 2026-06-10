@@ -2,6 +2,8 @@ using Microsoft.EntityFrameworkCore;
 using UserApp.Domain.Users;
 using UserApp.Infrastructure.Persistence.Configurations;
 using MediaEntity = UserApp.Domain.Media.MediaFile;
+using UserApp.Domain.Paps;
+using UserApp.Domain.Milks;
 
 
 namespace UserApp.Infrastructure.Persistence;
@@ -20,6 +22,8 @@ public class AppDbContext : DbContext
 
     // ================= AUTO DBSets =================
     // <AUTO-DBSETS-START>
+public DbSet<Pap> Paps => Set<Pap>();
+public DbSet<Milk> Milks => Set<Milk>();
     // <AUTO-DBSETS-END>
 
 

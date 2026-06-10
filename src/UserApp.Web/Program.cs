@@ -19,6 +19,12 @@ using UserApp.Infrastructure.Media;
 using UserApp.Domain.Media;
 
 using UserApp.Domain.Media;
+using UserApp.Domain.Paps;
+using UserApp.Application.Paps;
+using UserApp.Application.Paps.Interfaces;
+using UserApp.Domain.Milks;
+using UserApp.Application.Milks;
+using UserApp.Application.Milks.Interfaces;
 
 
 // ================= AUTO MODULE IMPORTS =================
@@ -57,6 +63,8 @@ builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
 // ================= AUTO REPOSITORIES =================
 // <AUTO-REPOSITORIES-START>
+builder.Services.AddScoped<IPapRepository, PapRepository>();
+builder.Services.AddScoped<IMilkRepository, MilkRepository>();
 // <AUTO-REPOSITORIES-END>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -70,6 +78,8 @@ builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
 
 // ================= AUTO SERVICES =================
 // <AUTO-SERVICES-START>
+builder.Services.AddScoped<IPapService, PapService>();
+builder.Services.AddScoped<IMilkService, MilkService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();
