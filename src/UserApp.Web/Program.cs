@@ -1,4 +1,6 @@
+using AutoMapper;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging.Abstractions;
 using UserApp.Infrastructure;
 using UserApp.Infrastructure.Persistence;
 using UserApp.Web.Mapping;
@@ -42,7 +44,14 @@ builder.Services.AddInfrastructure(builder.Configuration);
 // ------------------------------------------------
 // AutoMapper
 // ------------------------------------------------
-builder.Services.AddAutoMapper(typeof(MappingProfile));
+var mapperConfiguration = new MapperConfiguration(
+    cfg =>
+    {
+        cfg.AddProfile<MappingProfile>();
+    },
+    NullLoggerFactory.Instance);
+
+builder.Services.AddSingleton(mapperConfiguration.CreateMapper());
 
 // ------------------------------------------------
 // REPOSITORIES
