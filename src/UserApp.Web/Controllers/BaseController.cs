@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.DependencyInjection;
 using UserApp.Application.Common;
 using UserApp.Application.Common.Interfaces;
+using UserApp.Web.Common;
 using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers;
@@ -98,14 +99,14 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         => View("Create");    // -------------------------
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(TViewModel vm, IFormFile? file)
+    public virtual async Task<IActionResult> Create(TViewModel vm)
     {
-        if (!ModelState.IsValid)
-            return View("Create", vm);
+        if (!ValidateModel(vm))
+            return View(vm);
 
         var entity = _mapper.Map<TEntity>(vm);
 
-        await _service.AddAsync(entity, file);
+        await _service.AddAsync(entity);
 
         return RedirectToAction(nameof(Index));
     }
@@ -177,5 +178,19 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         await _service.RemoveAsync(entity);
 
         return RedirectToAction(nameof(Index));
+    }
+    protected bool ValidateModel<T>(T model)
+    {
+        var results = DynamicValidator.Validate(model);
+
+        foreach (var error in results)
+        {
+            foreach (var member in error.MemberNames)
+            {
+                ModelState.AddModelError(member, error.ErrorMessage!);
+            }
+        }
+
+        return ModelState.IsValid;
     }
 }

@@ -4,6 +4,8 @@
 
 <form method="post">
 
+    @Html.AntiForgeryToken()
+
     <div class="mb-3">
         <label>Module Name</label>
         <input asp-for="ModuleName" class="form-control" />
@@ -43,7 +45,10 @@
                 <th>Name</th>
                 <th>Type</th>
                 <th>Length</th>
+                <th>Required</th>
                 <th>Nullable</th>
+                <th>Min</th>
+                <th>Max</th>
                 <th></th>
             </tr>
         </thead>
@@ -72,11 +77,11 @@ function addField() {
 
     row.innerHTML = `
         <td>
-            <input name="Fields[${index}].Name" class="form-control" />
+            <input name="Fields[${index}].Name" class="form-control" data-field="Name" />
         </td>
 
         <td>
-            <select name="Fields[${index}].Type" class="form-control">
+            <select name="Fields[${index}].Type" class="form-control field-type" data-field="Type" onchange="updateValidationInputNames(this.closest('tr'))">
                 <option value="string">string</option>
                 <option value="int">int</option>
                 <option value="decimal">decimal</option>
@@ -86,21 +91,88 @@ function addField() {
         </td>
 
         <td>
-            <input name="Fields[${index}].Length" type="number" class="form-control" />
+            <input name="Fields[${index}].Length" type="number" class="form-control" data-field="Length" />
+        </td>
+
+        <td class="text-center">
+            <input type="checkbox" name="Fields[${index}].IsRequired" value="true" data-field="IsRequired" />
+            <input type="hidden" name="Fields[${index}].IsRequired" value="false" data-field="IsRequired" />
+        </td>
+
+        <td class="text-center">
+            <input type="checkbox" name="Fields[${index}].IsNullable" value="true" data-field="IsNullable" />
+            <input type="hidden" name="Fields[${index}].IsNullable" value="false" data-field="IsNullable" />
         </td>
 
         <td>
-            <input type="checkbox" name="Fields[${index}].IsNullable" />
+            <input type="number" class="form-control field-min" />
         </td>
 
         <td>
-            <button type="button" onclick="this.closest('tr').remove()" class="btn btn-danger btn-sm">
+            <input type="number" class="form-control field-max" />
+        </td>
+
+        <td>
+            <button type="button" onclick="removeField(this)" class="btn btn-danger btn-sm">
                 X
             </button>
         </td>
     `;
 
     tbody.appendChild(row);
+    updateValidationInputNames(row);
     index++;
+}
+
+function removeField(button) {
+    button.closest("tr").remove();
+    reindexFields();
+}
+
+function reindexFields() {
+    const rows = document.querySelectorAll("#fieldsTable tbody tr");
+
+    rows.forEach((row, rowIndex) => {
+        row.querySelectorAll("[data-field]").forEach(input => {
+            input.name = `Fields[${rowIndex}].${input.dataset.field}`;
+        });
+
+        updateValidationInputNames(row, rowIndex);
+    });
+
+    index = rows.length;
+}
+
+function updateValidationInputNames(row, rowIndex = null) {
+    const currentIndex = rowIndex ?? Array.from(row.parentElement.children).indexOf(row);
+    const type = row.querySelector(".field-type").value;
+    const minInput = row.querySelector(".field-min");
+    const maxInput = row.querySelector(".field-max");
+    const supportsNumericRange = type === "int" || type === "decimal";
+
+    minInput.removeAttribute("name");
+    maxInput.removeAttribute("name");
+    minInput.disabled = false;
+    maxInput.disabled = false;
+    minInput.step = "1";
+    maxInput.step = "1";
+
+    if (type === "string") {
+        minInput.name = `Fields[${currentIndex}].MinLength`;
+        maxInput.name = `Fields[${currentIndex}].MaxLength`;
+    } else if (supportsNumericRange) {
+        minInput.name = `Fields[${currentIndex}].MinValue`;
+        maxInput.name = `Fields[${currentIndex}].MaxValue`;
+
+        if (type === "decimal") {
+            minInput.step = "0.01";
+            maxInput.step = "0.01";
+        }
+    } else {
+        minInput.value = "";
+        maxInput.value = "";
+        minInput.disabled = true;
+        maxInput.disabled = true;
+    }
 }
 </script>

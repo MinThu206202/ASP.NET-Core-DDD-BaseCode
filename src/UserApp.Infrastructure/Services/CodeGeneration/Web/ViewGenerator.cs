@@ -103,6 +103,7 @@ public class ViewGenerator
 <div class=""form-group"">
     <label>{field.Name}</label>
     <input asp-for=""{field.Name}"" class=""form-control"" />
+    <span asp-validation-for=""{field.Name}"" class=""text-danger""></span>
 </div>");
         }
 
@@ -123,5 +124,36 @@ public class ViewGenerator
     internal void GenerateViews(string name, List<ModuleFieldDto> fields, object hasImage)
     {
         throw new NotImplementedException();
+    }
+
+    private string BuildProperty(ModuleFieldDto field)
+    {
+        var sb = new StringBuilder();
+
+        if (field.IsRequired)
+            sb.AppendLine("[Required(ErrorMessage = \"" + field.Name + " is required\")]");
+
+        if (field.MinLength.HasValue || field.MaxLength.HasValue)
+        {
+            sb.AppendLine(
+                $"[StringLength({field.MaxLength ?? 500}," +
+                $" MinimumLength = {field.MinLength ?? 0}," +
+                $" ErrorMessage = \"{field.Name} length must be between {field.MinLength ?? 0} and {field.MaxLength ?? 500}\")]");
+        }
+
+        if (field.Type == "decimal" ||
+            field.Type == "double" ||
+            field.Type == "int")
+        {
+            sb.AppendLine(
+                $"[Range({field.MinValue ?? 0}," +
+                $"{field.MaxValue ?? 999999999}," +
+                $"ErrorMessage = \"{field.Name} must be between {field.MinValue ?? 0} and {field.MaxValue ?? 999999999}\")]");
+        }
+
+        sb.AppendLine(
+            $"public {field.Type}{(field.IsNullable ? "?" : "")} {field.Name} {{ get; set; }}");
+
+        return sb.ToString();
     }
 }

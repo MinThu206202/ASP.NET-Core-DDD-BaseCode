@@ -1,45 +1,46 @@
-using System;
 using System.Diagnostics;
 
 namespace UserApp.Infrastructure.Services.CodeGeneration.Shared;
 
 public class CommandRunner
 {
-    private readonly PathProvider _paths;
-
-    public CommandRunner(PathProvider paths)
+    public static void Run(string fileName, string arguments)
     {
-        _paths = paths;
-    }
-
-    public string Run(string fileName, string arguments)
-    {
-        var process = new Process
+        var psi = new ProcessStartInfo
         {
-            StartInfo = new ProcessStartInfo
-            {
-                FileName = fileName,
-                Arguments = arguments,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-                UseShellExecute = false,
-                CreateNoWindow = true,
-                WorkingDirectory = _paths.SolutionRoot
-            }
+            FileName = fileName,
+            Arguments = arguments,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true,
+            UseShellExecute = false,
+            CreateNoWindow = true
         };
 
-        process.Start();
+        using var process = Process.Start(psi);
 
-        var output = process.StandardOutput.ReadToEnd();
-        var error = process.StandardError.ReadToEnd();
+        if (process == null)
+            throw new InvalidOperationException(
+                $"Unable to start process {fileName}");
+
+        string output = process.StandardOutput.ReadToEnd();
+        string error = process.StandardError.ReadToEnd();
 
         process.WaitForExit();
 
         if (process.ExitCode != 0)
         {
-            throw new InvalidOperationException($"Command failed: {fileName} {arguments}\n{error}");
-        }
+            throw new InvalidOperationException($"""
+Command failed
 
-        return output;
+Command:
+{fileName} {arguments}
+
+Output:
+{output}
+
+Error:
+{error}
+""");
+        }
     }
 }

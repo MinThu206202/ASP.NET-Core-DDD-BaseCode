@@ -13,7 +13,6 @@ public class ModuleGeneratorService : IModuleGeneratorService
     private readonly PathProvider _paths;
     private readonly FileManager _files;
     private readonly TemplateEngine _templates;
-    private readonly CommandRunner _commands;
     private readonly DomainGenerator _domain;
     private readonly ApplicationGenerator _application;
     private readonly InfrastructureGenerator _infrastructure;
@@ -28,7 +27,6 @@ public class ModuleGeneratorService : IModuleGeneratorService
         _paths = new PathProvider();
         _files = new FileManager();
         _templates = new TemplateEngine(_paths);
-        _commands = new CommandRunner(_paths);
 
         _domain = new DomainGenerator(_paths, _files, _templates);
         _application = new ApplicationGenerator(_paths, _files, _templates);
@@ -37,7 +35,7 @@ public class ModuleGeneratorService : IModuleGeneratorService
         _dbContextUpdater = new DbContextUpdater(_files, _paths);
         _mappingUpdater = new MappingUpdater(_files, _paths);
         _programUpdater = new ProgramUpdater(_files, _paths);
-        _migrationRunner = new MigrationRunner(_commands, _paths);
+        _migrationRunner = new MigrationRunner(_paths);
     }
 
     public Task GenerateModuleAsync(
@@ -55,10 +53,10 @@ public class ModuleGeneratorService : IModuleGeneratorService
 
         Console.WriteLine($"Generating module: {name}");
 
-        _domain.Generate(name, fields,hasImage);
+        _domain.Generate(name, fields, hasImage);
         _application.Generate(name);
         _infrastructure.Generate(name);
-        _web.Generate(name, fields,hasImage);
+        _web.Generate(name, fields, hasImage);
 
         _mappingUpdater.Update(name);
         _dbContextUpdater.Update(name);

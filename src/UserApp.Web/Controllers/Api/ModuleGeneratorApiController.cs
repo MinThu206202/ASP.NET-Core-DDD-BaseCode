@@ -34,7 +34,12 @@ public class ModuleGeneratorApiController : ControllerBase
                 Name = x.Name,
                 Type = x.Type,
                 Length = x.Length,
-                IsNullable = x.IsNullable
+                IsRequired = x.IsRequired,
+                IsNullable = x.IsNullable,
+                MinLength = x.MinLength,
+                MaxLength = x.MaxLength,
+                MinValue = x.MinValue,
+                MaxValue = x.MaxValue
             })
             .ToList();
 

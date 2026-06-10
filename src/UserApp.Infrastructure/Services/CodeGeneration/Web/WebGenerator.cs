@@ -70,10 +70,37 @@ public class WebGenerator
             if (field.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            if (field.IsRequired)
+                sb.AppendLine($"    [Required(ErrorMessage = \"{field.Name} is required\")] ");
+
+            if (IsStringType(field.Type) && HasStringLengthValidation(field))
+            {
+                var minLength = field.MinLength ?? ToLength(field.MinValue) ?? 0;
+                var maxLength = field.MaxLength ?? ToLength(field.MaxValue) ?? field.Length ?? 500;
+
+                sb.AppendLine(
+                    "    [StringLength(" + maxLength + ", " +
+                    "MinimumLength = " + minLength + ", " +
+                    "ErrorMessage = \"" + field.Name + " length must be between " +
+                    minLength + " and " + maxLength + "\")] ");
+            }
+
+            if (IsNumericType(field.Type) && (field.MinValue.HasValue || field.MaxValue.HasValue))
+            {
+                var minValue = FormatDecimal(field.MinValue ?? 0);
+                var maxValue = FormatDecimal(field.MaxValue ?? 999999999);
+
+                sb.AppendLine(
+                    "    [Range(" + minValue + ", " +
+                    maxValue + ", " +
+                    "ErrorMessage = \"" + field.Name + " must be between " +
+                    minValue + " and " + maxValue + "\")] ");
+            }
+
             var type = field.Type;
             var name = field.Name;
 
-            if (type == "string")
+            if (IsStringType(type))
             {
                 sb.AppendLine($"    public string {name} {{ get; set; }} = string.Empty;");
             }
@@ -82,6 +109,8 @@ public class WebGenerator
                 var nullable = field.IsNullable ? "?" : string.Empty;
                 sb.AppendLine($"    public {type}{nullable} {name} {{ get; set; }}");
             }
+
+            sb.AppendLine();
         }
 
         // ✅ ADD IMAGE FIELD (from Media table, not DB column)
@@ -94,4 +123,27 @@ public class WebGenerator
 
         return sb.ToString();
     }
+
+    private static bool IsStringType(string type)
+        => type.Equals("string", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsNumericType(string type)
+        => type.Equals("int", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("decimal", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("double", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("float", StringComparison.OrdinalIgnoreCase)
+            || type.Equals("long", StringComparison.OrdinalIgnoreCase);
+
+    private static bool HasStringLengthValidation(ModuleFieldDto field)
+        => field.MinLength.HasValue
+            || field.MaxLength.HasValue
+            || field.Length.HasValue
+            || field.MinValue.HasValue
+            || field.MaxValue.HasValue;
+
+    private static int? ToLength(decimal? value)
+        => value.HasValue ? (int)value.Value : null;
+
+    private static string FormatDecimal(decimal value)
+        => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
 }
