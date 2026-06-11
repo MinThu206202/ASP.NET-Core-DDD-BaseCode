@@ -63,11 +63,11 @@ public class ViewGenerator
             if (field.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            sb.AppendLine($"<th>{field.Name}</th>");
+            sb.AppendLine($"                        <th class=\"text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider\">{field.Name}</th>");
         }
 
         if (hasImage)
-            sb.AppendLine("<th>Images</th>");
+            sb.AppendLine("                        <th class=\"text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider\">Images</th>");
 
         return sb.ToString();
     }
@@ -81,22 +81,32 @@ public class ViewGenerator
             if (field.Name.Equals("Id", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            sb.AppendLine($"<td>@p.{field.Name}</td>");
+            sb.AppendLine($"                        <td class=\"px-6 py-4 text-slate-600\">@p.{field.Name}</td>");
         }
 
         if (hasImage)
         {
-            sb.AppendLine(@"<td>
-    @if (p.ImageUrls.Count > 0)
-    {
-        <div style=""display:flex; gap:4px;"">
-        @foreach (var img in p.ImageUrls.Take(3))
-        {
-            <img src=""@img"" width=""50"" height=""50"" style=""object-fit:cover;"" />
-        }
-        </div>
-    }
-</td>");
+            sb.AppendLine(@"                        <td class=""px-6 py-4"">
+                            @if (p.ImageUrls.Count > 0)
+                            {
+                                <div class=""flex items-center gap-1.5"">
+                                @foreach (var img in p.ImageUrls.Take(3))
+                                {
+                                    <div class=""w-10 h-10 rounded-lg overflow-hidden ring-2 ring-slate-100"">
+                                        <img src=""@img"" alt="""" class=""w-full h-full object-cover"" />
+                                    </div>
+                                }
+                                @if (p.ImageUrls.Count > 3)
+                                {
+                                    <span class=""text-xs font-bold text-slate-400 ml-1"">+@(p.ImageUrls.Count - 3)</span>
+                                }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class=""text-xs text-slate-400 italic"">No images</span>
+                            }
+                        </td>");
         }
 
         return sb.ToString();
@@ -112,22 +122,32 @@ public class ViewGenerator
                 continue;
 
             sb.AppendLine($@"
-<div class=""form-group"">
-    <label>{field.Name}</label>
-    <input asp-for=""{field.Name}"" class=""form-control"" />
-    <span asp-validation-for=""{field.Name}"" class=""text-danger""></span>
-</div>");
+                <div>
+                    <label asp-for=""{field.Name}"" class=""block text-sm font-bold text-slate-700 mb-1.5"">{field.Name}</label>
+                    <input asp-for=""{field.Name}""
+                           class=""w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500 transition-all duration-200"" />
+                    <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
+                </div>");
         }
 
-        // ✅ IMAGE BLOCK: real file upload for generated forms
         if (hasImage)
         {
             sb.AppendLine(@"
-<div class=""form-group border p-2 mt-3"">
-    <label>Images</label>
-    <input type=""file"" name=""files"" multiple class=""form-control"" />
-    <small class=""text-muted"">Choose one or more image files to upload for this item.</small>
-</div>");
+                <div>
+                    <label class=""block text-sm font-bold text-slate-700 mb-1.5"">Images</label>
+                    <div class=""relative"">
+                        <input type=""file"" name=""files"" multiple
+                               class=""peer absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10""
+                               onchange=""updateFileLabel(this)"" />
+                        <div class=""flex flex-col items-center justify-center gap-2 px-6 py-8 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50 text-slate-400 peer-hover:border-indigo-400 peer-hover:bg-indigo-50/50 transition-all duration-200"">
+                            <svg class=""w-10 h-10 text-slate-300 peer-hover:text-indigo-400 transition-colors duration-200"" fill=""none"" stroke=""currentColor"" viewBox=""0 0 24 24"">
+                                <path stroke-linecap=""round"" stroke-linejoin=""round"" stroke-width=""1.5"" d=""M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z""/>
+                            </svg>
+                            <span id=""fileLabel"" class=""text-sm font-medium"">Choose images or drag here</span>
+                            <span class=""text-xs text-slate-400"">Supports JPG, PNG, WEBP &bull; Max 5MB each</span>
+                        </div>
+                    </div>
+                </div>");
         }
 
         return sb.ToString();
@@ -143,31 +163,38 @@ public class ViewGenerator
         if (!hasImage) return string.Empty;
 
         return @"
-@if (Model.MediaList.Count > 0)
-{
-    <div class=""form-group border p-2 mt-3"">
-        <label>Current Images</label>
-        <div style=""display:flex; gap:12px; flex-wrap:wrap; margin-top:8px;"">
-        @foreach (var media in Model.MediaList)
-        {
-            <div class=""media-item"" style=""position:relative; display:inline-block;"">
-                <img src=""@media.Url"" width=""120"" height=""120"" style=""object-fit:cover; border:1px solid #ddd; border-radius:4px;"" />
-                <button type=""button""
-                        class=""btn btn-danger btn-sm""
-                        style=""position:absolute; top:-8px; right:-8px; border-radius:50%; width:24px; height:24px; padding:0; line-height:1; font-size:14px;""
-                        onclick=""deleteMedia('@media.Id', this)"">
-                    &times;
-                </button>
-                <div style=""margin-top:4px;"">
-                    <input type=""file"" name=""replace_@media.Id"" class=""form-control form-control-sm"" accept=""image/*"" />
-                    <small class=""text-muted"">Replace this image</small>
-                </div>
-            </div>
-        }
-        </div>
-    </div>
-}
-";
+                @if (Model.MediaList.Count > 0)
+                {
+                    <div>
+                        <label class=""block text-sm font-bold text-slate-700 mb-3"">Current Images</label>
+                        <div class=""grid grid-cols-2 sm:grid-cols-3 gap-4"">
+                        @foreach (var media in Model.MediaList)
+                        {
+                            <div class=""media-item group relative bg-slate-50 rounded-xl border border-slate-200 p-2 hover:border-indigo-300 hover:shadow-md transition-all duration-200"">
+                                <div class=""relative aspect-square rounded-lg overflow-hidden bg-slate-100"">
+                                    <img src=""@media.Url"" alt=""@media.OriginalName""
+                                         class=""w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"" />
+                                    <button type=""button""
+                                            onclick=""deleteMedia('@media.Id', this)""
+                                            class=""absolute top-1.5 right-1.5 w-7 h-7 flex items-center justify-center rounded-full bg-rose-500 shadow-sm text-white hover:bg-rose-600 hover:scale-110 transition-all duration-200"">
+                                        <svg class=""w-4 h-4"" fill=""none"" stroke=""currentColor"" viewBox=""0 0 24 24"">
+                                            <path stroke-linecap=""round"" stroke-linejoin=""round"" stroke-width=""2"" d=""M6 18L18 6M6 6l12 12""/>
+                                        </svg>
+                                    </button>
+                                </div>
+                                <div class=""mt-2"">
+                                    <p class=""text-xs text-slate-500 truncate px-1"">@media.OriginalName</p>
+                                    <div class=""mt-1.5"">
+                                        <input type=""file"" name=""replace_@media.Id""
+                                               class=""block w-full text-xs text-slate-500 file:mr-2 file:py-1 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 transition-colors""
+                                               accept=""image/*"" />
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                        </div>
+                    </div>
+                }";
     }
 
     private static string BuildMediaScripts(bool hasImage)
@@ -176,6 +203,12 @@ public class ViewGenerator
 
         return @"
     <script>
+        function updateFileLabel(input) {
+            const label = document.getElementById('fileLabel');
+            label.textContent = input.files.length > 0
+                ? input.files.length + ' file(s) selected'
+                : 'Choose images or drag here';
+        }
         function deleteMedia(mediaId, btn) {
             if (!confirm('Delete this image?')) return;
             fetch('@Url.Action(""Delete"", ""Media"")', {
@@ -184,7 +217,11 @@ public class ViewGenerator
                 body: 'mediaId=' + mediaId
             }).then(r => {
                 if (r.ok) {
-                    btn.closest('.media-item').remove();
+                    const item = btn.closest('.media-item');
+                    item.style.transition = 'all 0.3s ease';
+                    item.style.opacity = '0';
+                    item.style.transform = 'scale(0.8)';
+                    setTimeout(() => item.remove(), 300);
                 } else {
                     alert('Failed to delete image');
                 }

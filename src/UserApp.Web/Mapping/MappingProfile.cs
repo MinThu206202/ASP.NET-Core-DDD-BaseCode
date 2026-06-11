@@ -4,6 +4,8 @@ using UserApp.Web.ViewModels;
 using UserApp.Application.Users.DTOs;
 using UserApp.Domain.Paps;
 using UserApp.Domain.Milks;
+using UserApp.Domain.Ais;
+using UserApp.Domain.Cocos;
 
 
 namespace UserApp.Web.Mapping;
@@ -32,6 +34,10 @@ CreateMap<Pap, PapViewModel>();
 CreateMap<PapViewModel, Pap>();
 CreateMap<Milk, MilkViewModel>();
 CreateMap<MilkViewModel, Milk>();
+CreateMap<Ai, AiViewModel>();
+CreateMap<AiViewModel, Ai>();
+CreateMap<Coco, CocoViewModel>();
+CreateMap<CocoViewModel, Coco>();
         // <AUTO-MAPPINGS-END>
 
     }

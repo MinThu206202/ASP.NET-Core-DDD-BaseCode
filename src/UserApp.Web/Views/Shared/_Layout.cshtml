@@ -36,12 +36,36 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        .input-validation-error {
+            border-color: #f43f5e !important;
+            background-color: #fff1f2 !important;
+        }
+        .field-validation-error {
+            color: #f43f5e;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            display: block;
+        }
+        .validation-summary-errors {
+            color: #f43f5e;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+        }
+        .validation-summary-errors ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .validation-summary-errors li {
+            padding: 0.25rem 0;
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 antialiased min-h-screen flex flex-col md:flex-row">
+<body class="bg-slate-50 text-slate-800 antialiased">
 
     <!-- Mobile Header (Visible on small screens only) -->
-    <header class="md:hidden bg-slate-900 text-white flex items-center justify-between px-4 py-3 shadow-md z-50">
+    <header class="md:hidden bg-slate-900 text-white flex items-center justify-between px-4 py-3 shadow-md fixed top-0 left-0 right-0 z-50">
         <span class="text-xl font-black tracking-wider text-indigo-400">UserApp Suite</span>
         <button id="mobileMenuBtn" class="p-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 focus:outline-none transition-colors">
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -50,11 +74,10 @@
         </button>
     </header>
 
-    <!-- Sidebar Container -->
-    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-300 transform -translate-x-full md:translate-x-0 md:static md:flex flex-col justify-between transition-transform duration-300 ease-in-out border-r border-slate-800 shadow-xl h-screen">
+    <!-- Sidebar Container (fixed on desktop, overlay on mobile) -->
+    <aside id="sidebar" class="fixed inset-y-0 left-0 z-40 w-64 bg-slate-900 text-slate-300 transform -translate-x-full md:translate-x-0 flex flex-col transition-transform duration-300 ease-in-out border-r border-slate-800 shadow-xl">
         
-        <!-- Sidebar Top Area -->
-        <div class="px-6 py-5 flex flex-col h-full justify-between">
+        <div class="px-6 py-5 flex flex-col h-full justify-between overflow-y-auto">
             <div>
                 <!-- Brand Title -->
                 <div class="flex items-center space-x-3 mb-8">
@@ -68,36 +91,50 @@
 
                 <!-- Navigation Links -->
                 <nav class="space-y-1">
+                    <!-- Milk Link -->
+                    <a asp-controller="Milk" asp-action="Index" 
+                       class="flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">
+                        <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
+                        Milks
+                    </a>
+                    <!-- Pap Link -->
+                    @* <a asp-controller="Pap" asp-action="Index" 
+                       class="flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">
+                        <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                        </svg>
+                        Paps
+                    </a> *@
                     <!-- Users Link -->
                     <a asp-controller="Users" asp-action="Index" 
                        class="flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">
                         <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
                         </svg>
-                        Users Directory
+                        Users
                     </a>
-
                     <!-- Products Link -->
                     <a asp-controller="Product" asp-action="Index" 
                        class="flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">
                         <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                         </svg>
-                        Product Management
+                        Products
                     </a>
-
                     <!-- Payments Link -->
                     <a asp-controller="Payment" asp-action="Index" 
                        class="flex items-center px-4 py-3 rounded-xl text-sm font-bold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">
                         <svg class="w-5 h-5 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                         </svg>
-                        Payment Ledger
+                        Payments
                     </a>
                 </nav>
             </div>
 
-            <!-- Sidebar Bottom Footer Profile (Optional decoration) -->
+            <!-- Sidebar Bottom Footer -->
             <div class="pt-6 border-t border-slate-800 flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold text-sm">
                     ADM
@@ -113,9 +150,9 @@
     <!-- Overlay Backdrop for Mobile menu -->
     <div id="sidebarOverlay" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden transition-opacity"></div>
 
-    <!-- Main Content Wrapper -->
-    <div class="flex-1 flex flex-col min-w-0 min-h-screen">
-        <main class="flex-1 px-4 py-8 md:px-10 overflow-y-auto">
+    <!-- Main Content Wrapper (offset by sidebar width on desktop, full viewport height) -->
+    <div class="md:ml-64 flex flex-col h-screen">
+        <main class="flex-1 overflow-y-auto px-4 pt-16 pb-6 md:pt-8 md:px-10 md:pb-8">
             @RenderBody()
         </main>
     </div>

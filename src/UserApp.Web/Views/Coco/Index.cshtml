@@ -1,17 +1,17 @@
-@model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.{{Name}}ViewModel>
+@model UserApp.Web.ViewModels.ListViewModel<UserApp.Web.ViewModels.CocoViewModel>
 
 <div class="animate-fade-in">
     <div class="flex items-center justify-between mb-8">
         <div>
-            <h1 class="text-3xl font-black text-slate-800 tracking-tight">{{Name}}s</h1>
-            <p class="text-slate-500 text-sm mt-1">Manage your {{Name}} records</p>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">Cocos</h1>
+            <p class="text-slate-500 text-sm mt-1">Manage your Coco records</p>
         </div>
         <a asp-action="Create"
            class="inline-flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 hover:-translate-y-0.5">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
             </svg>
-            Create {{Name}}
+            Create Coco
         </a>
     </div>
 
@@ -21,7 +21,10 @@
                 <thead>
                     <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
-{{Columns}}
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Price</th>
+                        <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Images</th>
+
                         <th class="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
                 </thead>
@@ -30,7 +33,30 @@
 {
                     <tr class="hover:bg-indigo-50/40 transition-colors duration-150">
                         <td class="px-6 py-4 font-semibold text-slate-800">@p.Name</td>
-{{Rows}}
+                        <td class="px-6 py-4 text-slate-600">@p.Name</td>
+                        <td class="px-6 py-4 text-slate-600">@p.Price</td>
+                        <td class="px-6 py-4">
+                            @if (p.ImageUrls.Count > 0)
+                            {
+                                <div class="flex items-center gap-1.5">
+                                @foreach (var img in p.ImageUrls.Take(3))
+                                {
+                                    <div class="w-10 h-10 rounded-lg overflow-hidden ring-2 ring-slate-100">
+                                        <img src="@img" alt="" class="w-full h-full object-cover" />
+                                    </div>
+                                }
+                                @if (p.ImageUrls.Count > 3)
+                                {
+                                    <span class="text-xs font-bold text-slate-400 ml-1">+@(p.ImageUrls.Count - 3)</span>
+                                }
+                                </div>
+                            }
+                            else
+                            {
+                                <span class="text-xs text-slate-400 italic">No images</span>
+                            }
+                        </td>
+
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
                                 <a asp-action="Edit" asp-route-id="@p.Id"
@@ -63,8 +89,8 @@
             <svg class="w-16 h-16 mx-auto text-slate-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
             </svg>
-            <p class="text-slate-500 font-medium">No {{Name}}s found</p>
-            <p class="text-slate-400 text-sm mt-1">Create your first {{Name}} to get started.</p>
+            <p class="text-slate-500 font-medium">No Cocos found</p>
+            <p class="text-slate-400 text-sm mt-1">Create your first Coco to get started.</p>
         </div>
 }
     </div>

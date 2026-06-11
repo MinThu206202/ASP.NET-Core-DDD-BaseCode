@@ -1,30 +1,53 @@
 @model UserApp.Web.ViewModels.{{Name}}ViewModel
 
-<h2>Create {{Name}}</h2>
-
-<form asp-action="Create" method="post" enctype="multipart/form-data">
-
-    @Html.AntiForgeryToken()
-
-    <div asp-validation-summary="ModelOnly"
-         class="text-danger mb-3">
-    </div>
-
-{{Inputs}}
-
-    <div class="mt-3">
-        <button type="submit"
-                class="btn btn-success">
-            Save
-        </button>
-
-        <a asp-action="Index"
-           class="btn btn-secondary">
-            Back
+<div class="max-w-2xl mx-auto animate-fade-in">
+    <div class="mb-8">
+        <a asp-action="Index" class="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to {{Name}}s
         </a>
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight mt-2">Create {{Name}}</h1>
+        <p class="text-slate-500 text-sm mt-1">Add a new {{Name}} record</p>
     </div>
 
-</form>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-rose-600 mb-6 text-sm font-medium"></div>
+
+            <div class="space-y-6">
+{{Inputs}}
+            </div>
+
+            <div class="flex items-center gap-3 mt-8 pt-6 border-t border-slate-100">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Save {{Name}}
+                </button>
+                <a asp-action="Index"
+                   class="px-6 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
 
 @section Scripts
 {

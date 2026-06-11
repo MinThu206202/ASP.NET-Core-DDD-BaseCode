@@ -25,6 +25,12 @@ using UserApp.Application.Paps.Interfaces;
 using UserApp.Domain.Milks;
 using UserApp.Application.Milks;
 using UserApp.Application.Milks.Interfaces;
+using UserApp.Domain.Ais;
+using UserApp.Application.Ais;
+using UserApp.Application.Ais.Interfaces;
+using UserApp.Domain.Cocos;
+using UserApp.Application.Cocos;
+using UserApp.Application.Cocos.Interfaces;
 
 
 // ================= AUTO MODULE IMPORTS =================
@@ -65,6 +71,8 @@ builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 // <AUTO-REPOSITORIES-START>
 builder.Services.AddScoped<IPapRepository, PapRepository>();
 builder.Services.AddScoped<IMilkRepository, MilkRepository>();
+builder.Services.AddScoped<IAiRepository, AiRepository>();
+builder.Services.AddScoped<ICocoRepository, CocoRepository>();
 // <AUTO-REPOSITORIES-END>
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -80,6 +88,8 @@ builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
 // <AUTO-SERVICES-START>
 builder.Services.AddScoped<IPapService, PapService>();
 builder.Services.AddScoped<IMilkService, MilkService>();
+builder.Services.AddScoped<IAiService, AiService>();
+builder.Services.AddScoped<ICocoService, CocoService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();
