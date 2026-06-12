@@ -76,6 +76,8 @@ public class PermissionFilter : IAsyncActionFilter
             "GetAll" => "Index",
             "Get" => "Details",
             "Update" => "Edit",
+            "GetRoles" => "ManageRoles",
+            "UpdateRoles" => "ManageRoles",
             "UploadMedia" => "Upload",
             "DeleteMedia" => "Delete",
             "GetMedia" => "Index",
