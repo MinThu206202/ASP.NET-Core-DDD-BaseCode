@@ -16,4 +16,5 @@ public class ModuleFieldDto
     public decimal? MinValue { get; set; }
 
     public decimal? MaxValue { get; set; }
+    public string? EnumValues { get; set; }
 }

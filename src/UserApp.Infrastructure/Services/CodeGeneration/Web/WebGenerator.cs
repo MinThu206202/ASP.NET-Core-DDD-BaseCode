@@ -100,9 +100,12 @@ public class WebGenerator
             var type = field.Type;
             var name = field.Name;
 
-            if (IsStringType(type))
+            if (IsStringType(type) ||
+                type.Equals("enum",
+                StringComparison.OrdinalIgnoreCase))
             {
-                sb.AppendLine($"    public string {name} {{ get; set; }} = string.Empty;");
+                sb.AppendLine(
+                    $"    public string {name} {{ get; set; }} = string.Empty;");
             }
             else
             {

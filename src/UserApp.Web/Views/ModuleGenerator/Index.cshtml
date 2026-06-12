@@ -1,178 +1,591 @@
 @model UserApp.Web.ViewModels.ModuleGenerator.GenerateModuleViewModel
 
-<h2>Module Designer</h2>
+@{
+    ViewData["Title"] = "Module Designer";
+}
 
-<form method="post">
-
-    @Html.AntiForgeryToken()
-
-    <div class="mb-3">
-        <label>Module Name</label>
-        <input asp-for="ModuleName" class="form-control" />
-    </div>
-
-    <div class="form-check mb-3">
-        <input asp-for="RunMigration" class="form-check-input" />
-        <label asp-for="RunMigration" class="form-check-label">Run Migration</label>
-    </div>
-
-    <div class="form-check mb-3">
-        <input asp-for="RunDbUpdate" class="form-check-input" />
-        <label asp-for="RunDbUpdate" class="form-check-label">Run Database Update</label>
-    </div>
-
-    <div class="form-group mb-3">
-    <label>Image Support</label>
-
-    <div class="form-check">
-        <input class="form-check-input" type="radio" asp-for="HasImage" value="true" />
-        <label class="form-check-label">Yes (Enable Image)</label>
-    </div>
-
-    <div class="form-check">
-        <input class="form-check-input" type="radio" asp-for="HasImage" value="false" />
-        <label class="form-check-label">No Image</label>
-    </div>
-</div>
-
-    <hr />
-
-    <h4>Fields Designer</h4>
-
-    <table class="table" id="fieldsTable">
-        <thead>
-            <tr>
-                <th>Name</th>
-                <th>Type</th>
-                <th>Length</th>
-                <th>Required</th>
-                <th>Nullable</th>
-                <th>Min</th>
-                <th>Max</th>
-                <th></th>
-            </tr>
-        </thead>
-
-        <tbody></tbody>
-    </table>
-
-    <button type="button" class="btn btn-success" onclick="addField()">
-        + Add Field
-    </button>
-
-    <br /><br />
-
-    <button type="submit" class="btn btn-primary">
-        Generate Module
-    </button>
-</form>
+<!-- Google Fonts & Tailwind CSS CDN -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com"></script>
 
 <script>
-let index = 0;
+    tailwind.config = {
+        theme: {
+            extend: {
+                fontFamily: { sans: ['Inter', 'sans-serif'] }
+            }
+        }
+    }
+</script>
 
-function addField() {
-    const tbody = document.querySelector("#fieldsTable tbody");
+<style>
+    /* Premium micro-interactions and transitions */
+    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+    
+    .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+</style>
 
-    const row = document.createElement("tr");
+<div class="fade-in max-w-5xl mx-auto px-4 py-8 antialiased">
+    
+    <!-- Title Header Block -->
+    <div class="flex items-center gap-4 mb-8">
+        <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+            </svg>
+        </div>
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Module Designer</h1>
+            <p class="text-base text-slate-500 mt-0.5">Configure model parameters and programmatically compile application components</p>
+        </div>
+    </div>
 
-    row.innerHTML = `
-        <td>
-            <input name="Fields[${index}].Name" class="form-control" data-field="Name" />
-        </td>
+    <form method="post" class="space-y-6">
+        @Html.AntiForgeryToken()
 
-        <td>
-            <select name="Fields[${index}].Type" class="form-control field-type" data-field="Type" onchange="updateValidationInputNames(this.closest('tr'))">
-                <option value="string">string</option>
-                <option value="int">int</option>
-                <option value="decimal">decimal</option>
-                <option value="bool">bool</option>
-                <option value="DateTime">DateTime</option>
-            </select>
-        </td>
+        <!-- Global Settings Card -->
+        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 50ms;">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Global Settings</h2>
+            </div>
+            
+            <div class="p-6 space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Module Name Field -->
+                    <div>
+                        <label asp-for="ModuleName" class="block text-sm font-semibold text-slate-700 mb-2">Module Name</label>
+                        <input asp-for="ModuleName" placeholder="e.g., ProductCatalog"
+                               class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200" />
+                    </div>
 
-        <td>
-            <input name="Fields[${index}].Length" type="number" class="form-control" data-field="Length" />
-        </td>
+                    <!-- Image Radio Buttons -->
+                    <div>
+                        <label class="block text-sm font-semibold text-slate-700 mb-2">Image Attachments</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <button type="button" data-value="true" class="img-btn selected flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-indigo-500 bg-indigo-50/40 text-indigo-700">
+                                <span class="w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0"></span>
+                                Include Image Support
+                            </button>
+                            <button type="button" data-value="false" class="img-btn flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-slate-200 bg-white text-slate-600 hover:border-slate-300">
+                                <span class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0"></span>
+                                No Images
+                            </button>
+                            <input type="hidden" asp-for="HasImage" id="HasImage" value="true" />
+                        </div>
+                    </div>
+                </div>
 
-        <td class="text-center">
-            <input type="checkbox" name="Fields[${index}].IsRequired" value="true" data-field="IsRequired" />
-            <input type="hidden" name="Fields[${index}].IsRequired" value="false" data-field="IsRequired" />
-        </td>
+                <!-- Database Lifecycle Configurations -->
+                <div class="pt-2">
+                    <label class="block text-sm font-semibold text-slate-700 mb-3">Database Lifecycle Actions</label>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        
+                        <!-- Toggle Card 1: Run Migration -->
+                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                            <div class="pr-4">
+                                <div class="text-base font-semibold text-slate-800">Run Migration</div>
+                                <div class="text-sm text-slate-400 mt-0.5">Scaffold corresponding entity state context migrations.</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer group">
+                                <input asp-for="RunMigration" type="checkbox" value="true" class="sr-only peer" />
+                                <input type="hidden" name="RunMigration" value="false" />
+                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                            </label>
+                        </div>
 
-        <td class="text-center">
-            <input type="checkbox" name="Fields[${index}].IsNullable" value="true" data-field="IsNullable" />
-            <input type="hidden" name="Fields[${index}].IsNullable" value="false" data-field="IsNullable" />
-        </td>
+                        <!-- Toggle Card 2: Update Database -->
+                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                            <div class="pr-4">
+                                <div class="text-base font-semibold text-slate-800">Update Database</div>
+                                <div class="text-sm text-slate-400 mt-0.5">Directly apply newly discovered pending migrations to target schema context.</div>
+                            </div>
+                            <label class="relative inline-flex items-center cursor-pointer group">
+                                <input asp-for="RunDbUpdate" type="checkbox" value="true" class="sr-only peer" />
+                                <input type="hidden" name="RunDbUpdate" value="false" />
+                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                            </label>
+                        </div>
 
-        <td>
-            <input type="number" class="form-control field-min" />
-        </td>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <td>
-            <input type="number" class="form-control field-max" />
-        </td>
+        <!-- Schema Fields Setup Card -->
+        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 120ms;">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
+                <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
+            </div>
+            
+            <div class="overflow-x-auto custom-scrollbar">
+                <table class="w-full border-collapse" id="fieldsTable">
+                    <thead>
+                        <tr class="border-b border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                            <th class="p-3.5 pl-6 w-[35%]">Field Name</th>
+                            <th class="p-3.5 w-[25%]">Data Type</th>
+                            <th class="p-3.5 w-[15%]">Length</th>
+                            <th class="p-3.5 text-center w-[15%]">Nullable</th>
+                            <th class="p-3.5 pr-6 w-[10%] text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        <tr id="mgEmptyRow">
+                            <td colspan="5" class="p-12 text-center text-slate-400">
+                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                    <div class="p-3 bg-slate-50 rounded-xl text-slate-400 border border-slate-100 mb-3">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                        </svg>
+                                    </div>
+                                    <p class="text-base font-semibold text-slate-800">No layout components defined</p>
+                                    <p class="text-sm text-slate-400 mt-1">Initialize compilation by tracking structural layout attributes mapping directly to target DB states.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
-        <td>
-            <button type="button" onclick="removeField(this)" class="btn btn-danger btn-sm">
-                X
+            <!-- Footer Toolbar with Action Button -->
+            <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                <span class="text-sm text-slate-400">Configure parameters dynamically with smart validations.</span>
+                <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
+                    <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                    </svg>
+                    Add Schema Field
+                </button>
+            </div>
+        </div>
+
+        <!-- Submit Context Actions -->
+        <div class="slide-up flex justify-end pt-2" style="animation-delay: 180ms;">
+            <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 text-base font-semibold text-white bg-indigo-600 border border-indigo-700/50 rounded-xl shadow-sm hover:bg-indigo-700 active:scale-[0.98] hover:shadow-md transition-all duration-200">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                </svg>
+                Generate Module Architecture
             </button>
-        </td>
-    `;
+        </div>
 
-    tbody.appendChild(row);
-    updateValidationInputNames(row);
-    index++;
-}
+    </form>
+</div>
 
-function removeField(button) {
-    button.closest("tr").remove();
-    reindexFields();
-}
+<script>
+    var index = 0;
 
-function reindexFields() {
-    const rows = document.querySelectorAll("#fieldsTable tbody tr");
-
-    rows.forEach((row, rowIndex) => {
-        row.querySelectorAll("[data-field]").forEach(input => {
-            input.name = `Fields[${rowIndex}].${input.dataset.field}`;
+    // Image toggle - click any .img-btn
+    document.addEventListener('click', function(e) {
+        var btn = e.target.closest('.img-btn');
+        if (!btn) return;
+        document.querySelectorAll('.img-btn').forEach(function(b) {
+            b.classList.remove('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
+            b.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
+            b.querySelector('span').className = 'w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0';
         });
-
-        updateValidationInputNames(row, rowIndex);
+        btn.classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
+        btn.classList.add('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
+        btn.querySelector('span').className = 'w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0';
+        document.getElementById('HasImage').value = btn.dataset.value;
     });
 
-    index = rows.length;
-}
-
-function updateValidationInputNames(row, rowIndex = null) {
-    const currentIndex = rowIndex ?? Array.from(row.parentElement.children).indexOf(row);
-    const type = row.querySelector(".field-type").value;
-    const minInput = row.querySelector(".field-min");
-    const maxInput = row.querySelector(".field-max");
-    const supportsNumericRange = type === "int" || type === "decimal";
-
-    minInput.removeAttribute("name");
-    maxInput.removeAttribute("name");
-    minInput.disabled = false;
-    maxInput.disabled = false;
-    minInput.step = "1";
-    maxInput.step = "1";
-
-    if (type === "string") {
-        minInput.name = `Fields[${currentIndex}].MinLength`;
-        maxInput.name = `Fields[${currentIndex}].MaxLength`;
-    } else if (supportsNumericRange) {
-        minInput.name = `Fields[${currentIndex}].MinValue`;
-        maxInput.name = `Fields[${currentIndex}].MaxValue`;
-
-        if (type === "decimal") {
-            minInput.step = "0.01";
-            maxInput.step = "0.01";
-        }
-    } else {
-        minInput.value = "";
-        maxInput.value = "";
-        minInput.disabled = true;
-        maxInput.disabled = true;
+    function updateFieldCount() {
+        var n = document.querySelectorAll('#fieldsTable tbody tr.field-row').length;
+        document.getElementById('mgFieldCount').textContent = n + ' field' + (n !== 1 ? 's' : '');
+        document.getElementById('mgEmptyRow').style.display = n === 0 ? '' : 'none';
     }
-}
+
+    function getInputClasses() {
+        return 'w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-300 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 transition-all duration-150';
+    }
+
+    function addField() {
+        var tbody = document.querySelector('#fieldsTable tbody');
+        
+        // We create two elements: the standard row, and the expandable validation/enum settings row.
+        var row = document.createElement('tr');
+        row.className = 'field-row hover:bg-slate-50/30 transition-colors duration-150 fade-in';
+        row.dataset.index = index;
+
+        var detailRow = document.createElement('tr');
+        detailRow.className = 'detail-row hidden bg-slate-50/40 border-l-2 border-indigo-500 transition-all duration-200';
+        detailRow.dataset.index = index;
+
+        var classes = getInputClasses();
+
+        // Standard Compact Column Inputs - Fixed syntax using standard concatenation
+        row.innerHTML = ' \
+            <td class="p-3 pl-6"> \
+                <input name="Fields[' + index + '].Name" class="' + classes + '" data-field="Name" placeholder="e.g., Title" required /> \
+            </td> \
+            <td class="p-3"> \
+                <select name="Fields[' + index + '].Type" class="' + classes + ' field-type cursor-pointer" data-field="Type" onchange="onTypeChange(this)"> \
+                    <option value="string">string</option> \
+                    <option value="int">int</option> \
+                    <option value="decimal">decimal</option> \
+                    <option value="bool">bool</option> \
+                    <option value="DateTime">DateTime</option> \
+                    <option value="enum">enum</option> \
+                </select> \
+            </td> \
+            <td class="p-3"> \
+                <input name="Fields[' + index + '].Length" type="number" class="' + classes + ' field-len-input" data-field="Length" placeholder="—" /> \
+            </td> \
+            <td class="p-3 text-center"> \
+                <div class="inline-flex items-center justify-center"> \
+                    <label class="relative inline-flex items-center cursor-pointer group"> \
+                        <input type="checkbox" name="Fields[' + index + '].IsNullable" value="true" data-field="IsNullable" class="sr-only peer" /> \
+                        <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                    </label> \
+                    <input type="hidden" name="Fields[' + index + '].IsNullable" value="false" data-field="IsNullable" /> \
+                </div> \
+            </td> \
+            <td class="p-3 pr-6 text-right"> \
+                <div class="inline-flex items-center gap-1.5"> \
+                    <button type="button" onclick="toggleDetails(this)" class="details-toggle-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-100/80 border border-transparent rounded-lg transition-all" title="Configure validation & parameters"> \
+                        <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"> \
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/> \
+                        </svg> \
+                        <span class="text-sm font-medium tracking-tight">Validation</span> \
+                    </button> \
+                    <button type="button" onclick="removeField(this)" class="inline-flex items-center justify-center w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all" aria-label="Remove Field"> \
+                        <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"> \
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/> \
+                        </svg> \
+                    </button> \
+                </div> \
+            </td> \
+        ';
+
+        // Validation Config Details Sub-Row Drawer Layout - Fixed string concatenation
+        detailRow.innerHTML = ' \
+            <td colspan="5" class="p-4 bg-slate-50/50 border-t border-b border-slate-100"> \
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> \
+                    <div class="space-y-4 validation-settings-panel"> \
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
+                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Validation Rules</span> \
+                            <div class="flex items-center gap-2"> \
+                                <span class="text-sm font-semibold text-slate-500">Required Property</span> \
+                                <label class="relative inline-flex items-center cursor-pointer group"> \
+                                    <input type="checkbox" name="Fields[' + index + '].IsRequired" value="true" data-field="IsRequired" class="sr-only peer" /> \
+                                    <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                                </label> \
+                                <input type="hidden" name="Fields[' + index + '].IsRequired" value="false" data-field="IsRequired" /> \
+                            </div> \
+                        </div> \
+                        <div class="grid grid-cols-2 gap-3 min-max-validation-inputs"> \
+                            <div> \
+                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 min-label">Min Config</label> \
+                                <input type="number" class="' + classes + ' field-min" placeholder="—" /> \
+                            </div> \
+                            <div> \
+                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 max-label">Max Config</label> \
+                                <input type="number" class="' + classes + ' field-max" placeholder="—" /> \
+                            </div> \
+                        </div> \
+                    </div> \
+                    <div class="space-y-3 enum-settings-panel hidden"> \
+                        <div class="border-b border-slate-100 pb-2"> \
+                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
+                        </div> \
+                        <div class="flex gap-2"> \
+                            <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
+                            <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"> \
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"> \
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/> \
+                                </svg> \
+                                Add \
+                            </button> \
+                        </div> \
+                        <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
+                            <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
+                            <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
+                        </div> \
+                    </div> \
+                </div> \
+            </td> \
+        ';
+
+        // Fix: use addEventListener instead of inline onkeydown for reliable tag input
+        var tagInput = detailRow.querySelector('.tag-input');
+        tagInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' || e.key === ',') {
+                e.preventDefault();
+                addOptionTag(this);
+            }
+        });
+
+        tbody.appendChild(row);
+        tbody.appendChild(detailRow);
+
+        onTypeChange(row.querySelector('.field-type'));
+        index++;
+        updateFieldCount();
+    }
+
+    function toggleDetails(btn) {
+        if (!btn) return;
+        var row = btn.closest('tr');
+        if (!row) return;
+        var trIndex = row.dataset.index;
+        var tbody = row.parentElement;
+        if (!tbody) return;
+        
+        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
+        if (!targetDetailRow) return;
+        
+        if (targetDetailRow.classList.contains('hidden')) {
+            targetDetailRow.classList.remove('hidden');
+            btn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
+        } else {
+            targetDetailRow.classList.add('hidden');
+            btn.classList.remove('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
+        }
+    }
+
+    function onTypeChange(select) {
+        if (!select) return;
+        var row = select.closest('tr');
+        if (!row) return;
+        var trIndex = row.dataset.index;
+        var tbody = row.parentElement;
+        if (!tbody) return;
+        
+        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
+        if (!detailRow) return;
+        
+        var isEnum = select.value === 'enum';
+        
+        var lenInput = row.querySelector('.field-len-input');
+        var valSettings = detailRow.querySelector('.validation-settings-panel');
+        var enumSettings = detailRow.querySelector('.enum-settings-panel');
+        var detailToggleBtn = row.querySelector('.details-toggle-btn');
+        
+        if (lenInput) {
+            if (select.value === 'string' || select.value === 'int' || select.value === 'decimal') {
+                lenInput.disabled = false;
+                lenInput.classList.remove('opacity-40');
+                lenInput.placeholder = '—';
+            } else {
+                lenInput.disabled = true;
+                lenInput.value = '';
+                lenInput.classList.add('opacity-40');
+                lenInput.placeholder = 'N/A';
+            }
+        }
+
+        if (isEnum) {
+            if (enumSettings) enumSettings.classList.remove('hidden');
+            if (valSettings) valSettings.classList.add('hidden');
+            detailRow.classList.remove('hidden');
+            if (detailToggleBtn) {
+                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
+                var span = detailToggleBtn.querySelector('span');
+                if (span) span.textContent = 'Options';
+            }
+        } else {
+            if (enumSettings) enumSettings.classList.add('hidden');
+            if (valSettings) valSettings.classList.remove('hidden');
+            if (detailToggleBtn) {
+                var span = detailToggleBtn.querySelector('span');
+                if (span) span.textContent = 'Validation';
+            }
+        }
+
+        updateValidationInputNames(row);
+    }
+
+    /* Enum Option Tag Utilities */
+    function handleAddTagClick(btn) {
+        if (!btn) return;
+        var panel = btn.closest('.enum-settings-panel');
+        if (!panel) return;
+        var input = panel.querySelector('.tag-input');
+        if (input) addOptionTag(input);
+    }
+
+    function addOptionTag(input) {
+        if (!input) return;
+        var value = input.value.trim();
+        if (!value) return;
+
+        if (value.indexOf(',') > -1) {
+            value.split(',').forEach(function(v) { 
+                addOptionTagFromString(v.trim(), input); 
+            });
+            input.value = '';
+            return;
+        }
+
+        addOptionTagFromString(value, input);
+        input.value = '';
+        input.focus();
+    }
+
+    function addOptionTagFromString(value, input) {
+        if (!value || !input) return;
+        var panel = input.closest('.enum-settings-panel');
+        if (!panel) return;
+        var container = panel.querySelector('.tag-container');
+        if (!container) return;
+        
+        var placeholder = container.querySelector('.placeholder-msg');
+        if (placeholder) placeholder.style.display = 'none';
+
+        var existing = container.querySelectorAll('.tag');
+        for (var i = 0; i < existing.length; i++) {
+            if (existing[i].dataset.val.toLowerCase() === value.toLowerCase()) return;
+        }
+
+        var tag = document.createElement('span');
+        tag.className = 'tag inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-semibold text-indigo-600 leading-none';
+        tag.dataset.val = value;
+        tag.innerHTML = value + ' <button type="button" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100/50 w-4 h-4 rounded inline-flex items-center justify-center font-bold text-xs leading-none transition-colors" onclick="removeOptionTag(this)">\u00d7</button>';
+
+        var hiddenInput = container.querySelector('.field-enum');
+        container.insertBefore(tag, hiddenInput);
+        updateEnumHidden(container);
+    }
+
+    function removeOptionTag(btn) {
+        if (!btn) return;
+        var container = btn.closest('.tag-container');
+        if (!container) return;
+        btn.parentElement.remove();
+        
+        var tags = container.querySelectorAll('.tag');
+        if (tags.length === 0) {
+            var placeholder = container.querySelector('.placeholder-msg');
+            if (placeholder) placeholder.style.display = '';
+        }
+        updateEnumHidden(container);
+    }
+
+    function updateEnumHidden(container) {
+        if (!container) return;
+        var hidden = container.querySelector('.field-enum');
+        if (!hidden) return;
+        var tags = container.querySelectorAll('.tag');
+        var values = [];
+        for (var i = 0; i < tags.length; i++) {
+            values.push(tags[i].dataset.val);
+        }
+        hidden.value = values.join(',');
+    }
+
+    function removeField(button) {
+        if (!button) return;
+        var row = button.closest('tr');
+        if (!row) return;
+        var trIndex = row.dataset.index;
+        var tbody = row.parentElement;
+        if (!tbody) return;
+        
+        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
+        
+        row.classList.add('opacity-0', '-translate-x-4', 'transition-all', 'duration-200');
+        if (targetDetailRow) {
+            targetDetailRow.classList.add('opacity-0', '-translate-x-4');
+        }
+
+        setTimeout(function () { 
+            row.remove(); 
+            if (targetDetailRow) targetDetailRow.remove();
+            reindexFields(); 
+            updateFieldCount(); 
+        }, 200);
+    }
+
+    function reindexFields() {
+        var rows = document.querySelectorAll('#fieldsTable tbody tr.field-row');
+        rows.forEach(function (row, rowIndex) {
+            row.dataset.index = rowIndex;
+            row.querySelectorAll('[data-field]').forEach(function (input) {
+                input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
+            });
+            
+            var tbody = row.parentElement;
+            if (tbody) {
+                var detailRows = tbody.querySelectorAll('tr.detail-row');
+                var matchedDetail = detailRows[rowIndex];
+                if (matchedDetail) {
+                    matchedDetail.dataset.index = rowIndex;
+                    matchedDetail.querySelectorAll('[data-field]').forEach(function (input) {
+                        input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
+                    });
+                    var tagContainer = matchedDetail.querySelector('.tag-container');
+                    if (tagContainer) tagContainer.dataset.row = rowIndex;
+                }
+            }
+
+            updateValidationInputNames(row, rowIndex);
+        });
+        index = rows.length;
+    }
+
+    function updateValidationInputNames(row, rowIndex) {
+        if (!row) return;
+        if (rowIndex === undefined) {
+            var tbodyEl = row.parentElement;
+            if (!tbodyEl) return;
+            var all = Array.from(tbodyEl.children).filter(function (r) { 
+                return r.classList.contains('field-row'); 
+            });
+            rowIndex = all.indexOf(row);
+        }
+        
+        var tbody = row.parentElement;
+        if (!tbody) return;
+        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + row.dataset.index + '"]');
+        if (!detailRow) return;
+
+        var typeSelect = row.querySelector('.field-type');
+        if (!typeSelect) return;
+        var type = typeSelect.value;
+        
+        var minInput = detailRow.querySelector('.field-min');
+        var maxInput = detailRow.querySelector('.field-max');
+        var minLabel = detailRow.querySelector('.min-label');
+        var maxLabel = detailRow.querySelector('.max-label');
+        
+        if (!minInput || !maxInput) return;
+        
+        var numeric = type === 'int' || type === 'decimal';
+        var isEnum = type === 'enum';
+
+        minInput.removeAttribute('name');
+        maxInput.removeAttribute('name');
+        minInput.disabled = isEnum;
+        maxInput.disabled = isEnum;
+        minInput.step = '1';
+        maxInput.step = '1';
+
+        if (type === 'string') {
+            minInput.name = 'Fields[' + rowIndex + '].MinLength';
+            maxInput.name = 'Fields[' + rowIndex + '].MaxLength';
+            if (minLabel) minLabel.textContent = 'Min Length';
+            if (maxLabel) maxLabel.textContent = 'Max Length';
+        } else if (numeric) {
+            minInput.name = 'Fields[' + rowIndex + '].MinValue';
+            maxInput.name = 'Fields[' + rowIndex + '].MaxValue';
+            if (minLabel) minLabel.textContent = 'Min Value';
+            if (maxLabel) maxLabel.textContent = 'Max Value';
+            if (type === 'decimal') { minInput.step = '0.01'; maxInput.step = '0.01'; }
+        } else {
+            if (minLabel) minLabel.textContent = 'Min Config';
+            if (maxLabel) maxLabel.textContent = 'Max Config';
+            minInput.value = '';
+            maxInput.value = '';
+        }
+    }
 </script>

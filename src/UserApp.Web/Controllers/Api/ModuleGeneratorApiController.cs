@@ -45,7 +45,8 @@ public class ModuleGeneratorApiController : ControllerBase
                 MinLength = x.MinLength,
                 MaxLength = x.MaxLength,
                 MinValue = x.MinValue,
-                MaxValue = x.MaxValue
+                MaxValue = x.MaxValue,
+                EnumValues = x.EnumValues
             })
             .ToList();
 
