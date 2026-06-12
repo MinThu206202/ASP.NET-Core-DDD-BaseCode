@@ -9,6 +9,7 @@ using UserApp.Domain.Cocos;
 using UserApp.Web.ViewModels.Roles;
 using UserApp.Domain.Roles;
 using UserApp.Web.ViewModels.Permissions;
+using UserApp.Domain.Categorys;
 
 
 namespace UserApp.Web.Mapping;
@@ -47,6 +48,8 @@ public class MappingProfile : Profile
         CreateMap<AiViewModel, Ai>();
         CreateMap<Coco, CocoViewModel>();
         CreateMap<CocoViewModel, Coco>();
+CreateMap<Category, CategoryViewModel>();
+CreateMap<CategoryViewModel, Category>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();
