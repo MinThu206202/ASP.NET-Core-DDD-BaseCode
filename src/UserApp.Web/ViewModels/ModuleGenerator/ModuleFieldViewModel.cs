@@ -11,4 +11,6 @@ public class ModuleFieldViewModel
     public int? MaxLength { get; set; }
     public decimal? MinValue { get; set; }
     public decimal? MaxValue { get; set; }
+
+    public string? EnumValues { get; set; }
 }

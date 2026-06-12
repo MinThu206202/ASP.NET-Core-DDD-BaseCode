@@ -54,9 +54,15 @@ public class DomainGenerator
 
             var nullable = field.IsNullable && field.Type != "string" ? "?" : "";
 
-            if (field.Type == "string")
+            if (field.Type == "enum")
             {
-                sb.AppendLine($"    public string {field.Name} {{ get; set; }} = string.Empty;");
+                sb.AppendLine(
+                    $"    public string {field.Name} {{ get; set; }} = string.Empty;");
+            }
+            else if (field.Type == "string")
+            {
+                sb.AppendLine(
+                    $"    public string {field.Name} {{ get; set; }} = string.Empty;");
             }
             else
             {
