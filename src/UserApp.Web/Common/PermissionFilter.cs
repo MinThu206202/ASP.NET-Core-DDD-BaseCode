@@ -78,8 +78,17 @@ public class PermissionFilter : IAsyncActionFilter
             "Update" => "Edit",
             "GetRoles" => "ManageRoles",
             "UpdateRoles" => "ManageRoles",
+            "UploadMedia" => "Upload",
+            "DeleteMedia" => "Delete",
+            "GetMedia" => "Index",
             _ => action
         };
+
+        // Media actions use the "Media" permission prefix instead of entity name
+        if ((action is "Upload" or "Delete") && controller != "Media")
+        {
+            controller = "Media";
+        }
 
         var permission = $"{controller}.{action}";
 
