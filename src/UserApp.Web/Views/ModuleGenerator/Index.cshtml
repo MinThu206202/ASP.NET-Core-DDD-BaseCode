@@ -67,34 +67,6 @@
                                class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200" />
                     </div>
 
-                    <!-- System Code Toggle Card -->
-                    <div class="p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                        <div class="flex items-center justify-between">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">System Code</div>
-                                <div class="text-sm text-slate-400 mt-0.5">A unique system-level identifier for this module.</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input type="checkbox" id="mgSystemCodeToggle" class="sr-only peer" checked />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-                        <div id="mgSystemCodeInputWrapper" class="mt-3">
-                            <div class="flex items-center gap-2">
-                                <span id="mgSystemCodeDisplay" class="flex-1 px-4 py-2.5 border border-slate-200 rounded-xl text-base font-mono font-semibold text-indigo-600 bg-indigo-50/40">—</span>
-                                <button type="button" id="mgSystemCodeEditBtn" onclick="enableSystemCodeEdit()" class="inline-flex items-center justify-center w-10 h-10 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 rounded-xl transition-all" title="Edit system code">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
-                                    </svg>
-                                </button>
-                            </div>
-                            <input type="text" id="mgSystemCodeInput"
-                                   class="hidden w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200"
-                                   placeholder="Auto-generated from module name" />
-                            <input type="hidden" name="SystemCode" id="mgSystemCodeHidden" value="" />
-                        </div>
-                    </div>
-
                     <!-- Image Radio Buttons -->
                     <div>
                         <label class="block text-sm font-semibold text-slate-700 mb-2">Image Attachments</label>
@@ -212,87 +184,6 @@
 <script>
     var index = 0;
 
-    // System Code editable display
-    var mgCodeUserEdited = false;
-    document.addEventListener('input', function(e) {
-        if (e.target && e.target.id === 'ModuleName' && !mgCodeUserEdited) {
-            autoFillSystemCode();
-        }
-    });
-    document.addEventListener('change', function(e) {
-        if (e.target && e.target.id === 'mgSystemCodeToggle') toggleSystemCode();
-    });
-    function autoFillSystemCode() {
-        var name = document.getElementById('ModuleName');
-        var display = document.getElementById('mgSystemCodeDisplay');
-        var hidden = document.getElementById('mgSystemCodeHidden');
-        if (!name || !display || !hidden) return;
-        var raw = name.value.trim();
-        var code = raw ? raw.replace(/([a-z])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toUpperCase() : '';
-        display.textContent = code || '—';
-        hidden.value = code;
-    }
-    function enableSystemCodeEdit() {
-        var display = document.getElementById('mgSystemCodeDisplay');
-        var input = document.getElementById('mgSystemCodeInput');
-        var btn = document.getElementById('mgSystemCodeEditBtn');
-        if (!display || !input || !btn) return;
-        display.classList.add('hidden');
-        btn.classList.add('hidden');
-        input.classList.remove('hidden');
-        input.value = display.textContent === '—' ? '' : display.textContent;
-        input.focus();
-        input.select();
-    }
-    function commitSystemCodeEdit() {
-        var display = document.getElementById('mgSystemCodeDisplay');
-        var input = document.getElementById('mgSystemCodeInput');
-        var btn = document.getElementById('mgSystemCodeEditBtn');
-        var hidden = document.getElementById('mgSystemCodeHidden');
-        if (!display || !input || !btn || !hidden) return;
-        var val = input.value.trim();
-        display.textContent = val || '—';
-        hidden.value = val;
-        input.classList.add('hidden');
-        btn.classList.remove('hidden');
-        display.classList.remove('hidden');
-        mgCodeUserEdited = true;
-    }
-    document.addEventListener('click', function(e) {
-        if (e.target && e.target.closest('#mgSystemCodeEditBtn, #mgSystemCodeInput')) return;
-        var input = document.getElementById('mgSystemCodeInput');
-        if (input && !input.classList.contains('hidden')) commitSystemCodeEdit();
-    });
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter' && e.target && e.target.id === 'mgSystemCodeInput') {
-            e.preventDefault();
-            commitSystemCodeEdit();
-        }
-        if (e.key === 'Escape' && e.target && e.target.id === 'mgSystemCodeInput') {
-            commitSystemCodeEdit();
-        }
-    });
-    function toggleSystemCode() {
-        var toggle = document.getElementById('mgSystemCodeToggle');
-        var wrapper = document.getElementById('mgSystemCodeInputWrapper');
-        var input = document.getElementById('mgSystemCodeInput');
-        var display = document.getElementById('mgSystemCodeDisplay');
-        var btn = document.getElementById('mgSystemCodeEditBtn');
-        var hidden = document.getElementById('mgSystemCodeHidden');
-        if (!toggle || !wrapper || !input || !display || !btn || !hidden) return;
-        wrapper.style.display = toggle.checked ? '' : 'none';
-        if (toggle.checked) {
-            mgCodeUserEdited = false;
-            autoFillSystemCode();
-        } else {
-            display.textContent = '—';
-            input.value = '';
-            hidden.value = '';
-        }
-    }
-    // Init on page load
-    document.addEventListener('DOMContentLoaded', function() { toggleSystemCode(); });
-
     // Image toggle - click any .img-btn
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.img-btn');
@@ -407,6 +298,14 @@
                         <div class="border-b border-slate-100 pb-2"> \
                             <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
                         </div> \
+                        <div class="flex items-center gap-2 mb-2"> \
+                            <label class="relative inline-flex items-center cursor-pointer group"> \
+                                <input type="checkbox" name="Fields[' + index + '].UseCommonTable" value="true" data-field="UseCommonTable" class="sr-only peer use-common-table-cb" onchange="onUseCommonTableChange(this)" /> \
+                                <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                            </label> \
+                            <span class="text-sm font-semibold text-slate-600">Use Common Table</span> \
+                            <input type="hidden" name="Fields[' + index + '].UseCommonTable" value="false" data-field="UseCommonTable" /> \
+                        </div> \
                         <div class="flex gap-2"> \
                             <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
                             <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"> \
@@ -416,6 +315,7 @@
                                 Add \
                             </button> \
                         </div> \
+                        <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable (Type = ModuleName + FieldName)</div> \
                         <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
                             <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
                             <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
@@ -502,6 +402,9 @@
                 var span = detailToggleBtn.querySelector('span');
                 if (span) span.textContent = 'Options';
             }
+            // Reset UseCommonTable hint visibility
+            var cb = enumSettings && enumSettings.querySelector('.use-common-table-cb');
+            if (cb) onUseCommonTableChange(cb);
         } else {
             if (enumSettings) enumSettings.classList.add('hidden');
             if (valSettings) valSettings.classList.remove('hidden');
@@ -512,6 +415,20 @@
         }
 
         updateValidationInputNames(row);
+    }
+
+    function onUseCommonTableChange(cb) {
+        if (!cb) return;
+        var panel = cb.closest('.enum-settings-panel');
+        if (!panel) return;
+        var hint = panel.querySelector('.common-table-hint');
+        if (hint) {
+            if (cb.checked) {
+                hint.classList.remove('hidden');
+            } else {
+                hint.classList.add('hidden');
+            }
+        }
     }
 
     /* Enum Option Tag Utilities */

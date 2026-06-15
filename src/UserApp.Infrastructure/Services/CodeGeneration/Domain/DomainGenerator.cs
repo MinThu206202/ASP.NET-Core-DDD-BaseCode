@@ -17,7 +17,7 @@ public class DomainGenerator
         _templates = templates;
     }
 
-    public void Generate(string name, string code, List<ModuleFieldDto> fields, bool hasImage)
+    public void Generate(string name, List<ModuleFieldDto> fields, bool hasImage)
     {
         var domainFolder = Path.Combine(_paths.SrcRoot, "UserApp.Domain", $"{name}s");
         _files.EnsureDirectory(domainFolder);
@@ -27,7 +27,7 @@ public class DomainGenerator
             new Dictionary<string, string>
             {
                 ["Name"] = name,
-                ["Properties"] = GenerateProperties(fields) + $"    public string SystemCode {{ get; set; }} = \"{code}\";",
+                ["Properties"] = GenerateProperties(fields),
                 ["HasImageInterface"] = hasImage ? ", IHasMedia" : ""
             });
 

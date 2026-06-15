@@ -1,11 +1,15 @@
+using System.Reflection;
 using AutoMapper;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Rendering;
 using UserApp.Application.Common;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Application.Common.Media;
+using UserApp.Application.CommonTables.Interfaces;
 using UserApp.Domain.Common;
+using UserApp.Domain.CommonTables;
 
 namespace UserApp.Web.Controllers.Api;
 
@@ -23,11 +27,71 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
     private IMediaService? MediaService =>
         _mediaService ?? HttpContext?.RequestServices.GetService<IMediaService>();
 
+    private ICommonTableService? CommonTableService =>
+        HttpContext?.RequestServices.GetService<ICommonTableService>();
+
     protected BaseApiController(IBaseService<TEntity> service, IMapper mapper, IMediaService? mediaService = null)
     {
         _service = service;
         _mapper = mapper;
         _mediaService = mediaService;
+    }
+
+    private async Task ResolveLookupDisplayNames(List<TViewModel> items)
+    {
+        var service = CommonTableService;
+        if (service == null) return;
+
+        var entityName = typeof(TEntity).Name;
+        var vmType = typeof(TViewModel);
+        var all = await service.ListAsync(0, 999);
+
+        foreach (var item in items)
+        {
+            foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (prop.PropertyType != typeof(string) || !prop.CanRead) continue;
+
+                var fieldName = prop.Name;
+                var nameProp = vmType.GetProperty($"{fieldName}Name", BindingFlags.Public | BindingFlags.Instance);
+                if (nameProp == null || !nameProp.CanWrite || nameProp.PropertyType != typeof(string)) continue;
+
+                var code = prop.GetValue(item) as string;
+                if (string.IsNullOrEmpty(code)) continue;
+
+                var type = $"{entityName}{fieldName}";
+                var displayName = all.FirstOrDefault(x => x.Type == type && x.Code == code)?.Name;
+                if (displayName != null)
+                    nameProp.SetValue(item, displayName);
+            }
+        }
+    }
+
+    private async Task PopulateLookupOptions(TViewModel vm)
+    {
+        var service = CommonTableService;
+        if (service == null) return;
+
+        var entityName = typeof(TEntity).Name;
+        var vmType = typeof(TViewModel);
+        var all = await service.ListAsync(0, 999);
+
+        foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(List<SelectListItem>) || !prop.CanWrite) continue;
+
+            var fieldName = prop.Name.EndsWith("Options") ? prop.Name[..^"Options".Length] : null;
+            if (string.IsNullOrEmpty(fieldName)) continue;
+
+            var type = $"{entityName}{fieldName}";
+            var options = all
+                .Where(x => x.Type == type)
+                .OrderBy(x => x.Name)
+                .Select(x => new SelectListItem { Value = x.Code, Text = x.Name })
+                .ToList();
+
+            prop.SetValue(vm, options);
+        }
     }
 
     // ---------------- GET ALL ----------------
@@ -38,6 +102,8 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
         var total = await _service.CountAsync();
 
         var vm = _mapper.Map<List<TViewModel>>(items);
+
+        await ResolveLookupDisplayNames(vm);
 
         return Ok(ApiResponse<object>.Ok(new
         {
@@ -58,8 +124,37 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
             return NotFound(ApiResponse<TViewModel>.Fail("Data not found"));
 
         var vm = _mapper.Map<TViewModel>(entity);
+        await ResolveLookupDisplayNames([vm]);
 
         return Ok(ApiResponse<TViewModel>.Ok(vm, "Data retrieved successfully"));
+    }
+
+    // ---------------- GET OPTIONS ----------------
+    [HttpGet("options")]
+    public async Task<ActionResult<ApiResponse<object>>> GetOptions()
+    {
+        var vm = Activator.CreateInstance(typeof(TViewModel)) as TViewModel;
+        if (vm == null)
+            return Ok(ApiResponse<object>.Ok(new Dictionary<string, object>(), "No options available"));
+
+        await PopulateLookupOptions(vm);
+
+        var optionsDict = new Dictionary<string, object>();
+        var vmType = typeof(TViewModel);
+
+        foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(List<SelectListItem>) || !prop.CanRead) continue;
+
+            var options = prop.GetValue(vm) as List<SelectListItem>;
+            if (options != null && options.Count > 0)
+            {
+                var fieldName = prop.Name.EndsWith("Options") ? prop.Name[..^"Options".Length] : prop.Name;
+                optionsDict[fieldName] = options.Select(o => new { value = o.Value, label = o.Text });
+            }
+        }
+
+        return Ok(ApiResponse<object>.Ok(optionsDict, "Options retrieved successfully"));
     }
 
     // ---------------- CREATE ----------------

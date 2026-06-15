@@ -17,7 +17,7 @@ public class ViewGenerator
         _templates = templates;
     }
 
-    public void GenerateViews(string name, string code, List<ModuleFieldDto> fields, bool hasImage)
+    public void GenerateViews(string name, List<ModuleFieldDto> fields, bool hasImage)
     {
         var viewFolder = Path.Combine(_paths.SrcRoot, "UserApp.Web", "Views", name);
         _files.EnsureDirectory(viewFolder);
@@ -36,7 +36,7 @@ public class ViewGenerator
             new Dictionary<string, string>
             {
                 ["Name"] = name,
-                ["Inputs"] = BuildFormInputs(fields, hasImage, code)
+                ["Inputs"] = BuildFormInputs(fields, hasImage)
             });
 
         var editContent = _templates.RenderFile(
@@ -45,7 +45,7 @@ public class ViewGenerator
             {
                 ["Name"] = name,
                 ["CurrentImages"] = BuildCurrentImages(hasImage),
-                ["Inputs"] = BuildFormInputs(fields, hasImage, code),
+                ["Inputs"] = BuildFormInputs(fields, hasImage),
                 ["Scripts"] = BuildMediaScripts(hasImage)
             });
 
@@ -96,7 +96,11 @@ public class ViewGenerator
             if (field.Name.Equals("Name", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            sb.AppendLine($@"<td class=""px-6 py-4 text-slate-600"">@p.{field.Name}</td>");
+            var displayValue = field.UseCommonTable
+                ? $"@p.{field.Name}Name"
+                : $"@p.{field.Name}";
+
+            sb.AppendLine($@"<td class=""px-6 py-4 text-slate-600"">{displayValue}</td>");
         }
 
         if (hasImage)
@@ -121,21 +125,9 @@ public class ViewGenerator
     // =========================
     // FORM INPUTS (CREATE + EDIT)
     // =========================
-    private static string BuildFormInputs(List<ModuleFieldDto> fields, bool hasImage, string code)
+    private static string BuildFormInputs(List<ModuleFieldDto> fields, bool hasImage)
     {
         var sb = new StringBuilder();
-
-        sb.AppendLine($@"
-<div>
-    <label asp-for=""SystemCode"" class=""block text-sm font-bold text-slate-700 mb-1.5"">
-        SystemCode
-    </label>
-
-    <input asp-for=""SystemCode"" value=""{code}""
-           class=""w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500"" readonly />
-
-    <span asp-validation-for=""SystemCode"" class=""text-xs text-rose-500 mt-1""></span>
-</div>");
 
         foreach (var field in fields)
         {
@@ -143,33 +135,54 @@ public class ViewGenerator
                 continue;
 
             // =========================
-            // ENUM FIELD → DROPDOWN
+            // ENUM FIELD
             // =========================
             if (IsEnumType(field.Type))
             {
-                var options = "";
-                if (!string.IsNullOrWhiteSpace(field.EnumValues))
+                if (field.UseCommonTable)
                 {
-                    var values = field.EnumValues.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
-                    foreach (var val in values)
-                    {
-                        options += $"\n            <option value=\"{val}\">{val}</option>";
-                    }
-                }
-
-                sb.AppendLine($@"
+                    // CommonTable → dropdown with asp-items
+                    sb.AppendLine($@"
 <div>
     <label asp-for=""{field.Name}"" class=""block text-sm font-bold text-slate-700 mb-1.5"">
         {field.Name}
     </label>
 
-    <select asp-for=""{field.Name}""
+    <select asp-for=""{field.Name}"" asp-items=""Model.{field.Name}Options""
             class=""w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50"">
-        <option value="""">-- Select {field.Name} --</option>{options}
+        <option value="""">-- Select {field.Name} --</option>
     </select>
 
     <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
 </div>");
+                }
+                else
+                {
+                    // Hardcoded options → radio buttons
+                    sb.AppendLine($@"
+<div>
+    <label class=""block text-sm font-bold text-slate-700 mb-1.5"">{field.Name}</label>
+    <div class=""flex flex-wrap gap-4"">");
+
+                    if (!string.IsNullOrWhiteSpace(field.EnumValues))
+                    {
+                        var values = field.EnumValues.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries);
+                        foreach (var val in values)
+                        {
+                            var code = val.Trim().Replace(' ', '_').ToUpperInvariant();
+                            sb.AppendLine($@"
+        <label class=""inline-flex items-center gap-2 cursor-pointer"">
+            <input type=""radio"" asp-for=""{field.Name}"" value=""{code}"" class=""text-indigo-600"" />
+            <span class=""text-sm text-slate-700"">{val}</span>
+        </label>");
+                        }
+                    }
+
+                    sb.AppendLine($@"
+    </div>
+    <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
+</div>");
+                }
             }
             else
             {

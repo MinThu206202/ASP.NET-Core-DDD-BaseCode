@@ -47,12 +47,12 @@ public class ModuleGeneratorController : Controller
                 MaxLength = x.MaxLength,
                 MinValue = x.MinValue,
                 MaxValue = x.MaxValue,
-                EnumValues = x.EnumValues
+                EnumValues = x.EnumValues,
+                UseCommonTable = x.UseCommonTable
             }).ToList();
 
         await _service.GenerateModuleAsync(
             moduleName,
-            vm.SystemCode,
             fields,
             vm.RunMigration,
             vm.HasImage,

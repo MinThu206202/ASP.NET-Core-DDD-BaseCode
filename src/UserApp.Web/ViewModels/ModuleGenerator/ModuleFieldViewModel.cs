@@ -13,4 +13,5 @@ public class ModuleFieldViewModel
     public decimal? MaxValue { get; set; }
 
     public string? EnumValues { get; set; }
+    public bool UseCommonTable { get; set; }
 }
