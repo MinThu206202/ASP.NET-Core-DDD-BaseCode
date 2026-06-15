@@ -111,7 +111,6 @@ namespace UserApp.Infrastructure.Migrations
                 });
 
             modelBuilder.Entity("UserApp.Domain.CommonTables.CommonTable", b =>
-            modelBuilder.Entity("UserApp.Domain.Humans.Human", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
@@ -120,6 +119,35 @@ namespace UserApp.Infrastructure.Migrations
                     b.Property<string>("Code")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<DateTime?>("DeletedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("datetime(6)");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CommonTables");
+                });
+
+            modelBuilder.Entity("UserApp.Domain.Humans.Human", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("char(36)");
+
                     b.Property<int>("Age")
                         .HasColumnType("int");
 
@@ -141,7 +169,6 @@ namespace UserApp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Type")
                     b.Property<string>("SystemCode")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -151,7 +178,6 @@ namespace UserApp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CommonTables");
                     b.ToTable("Humans");
                 });
 
