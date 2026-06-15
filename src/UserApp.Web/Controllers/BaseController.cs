@@ -188,6 +188,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             return View(vm);
         }
 
+        await SetFlashMessageAsync("Create");
         return RedirectToAction(nameof(Index));
     }
 
@@ -256,6 +257,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             return View("Edit", vm);
         }
 
+        await SetFlashMessageAsync("Edit");
         return RedirectToAction(nameof(Index));
     }
 
@@ -277,6 +279,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
         await _service.RemoveAsync(entity);
 
+        await SetFlashMessageAsync("Delete");
         return RedirectToAction(nameof(Index));
     }
 
@@ -293,6 +296,23 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         }
 
         return ModelState.IsValid;
+    }
+
+    private async Task SetFlashMessageAsync(string action)
+    {
+        var entityName = typeof(TEntity).Name;
+        var service = CommonTableService;
+        if (service != null)
+        {
+            var all = await service.ListAsync(0, 999);
+            var entry = all.FirstOrDefault(x => x.Type == "FlashMessage" && x.Code == $"{entityName}{action}");
+            if (entry != null)
+            {
+                TempData["Success"] = entry.Name;
+                return;
+            }
+        }
+        TempData["Success"] = $"{entityName} {action.ToLower()} successfully";
     }
 
     private bool ValidateFiles(IEnumerable<IFormFile>? files)

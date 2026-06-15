@@ -175,6 +175,28 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
         );
     }
 
+    [HttpPost("with-media")]
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<TViewModel>>> CreateWithMedia([FromForm] TViewModel vm, List<IFormFile> files)
+    {
+        var validationError = ValidateApiFiles(files);
+        if (validationError != null)
+            return BadRequest(ApiResponse<object>.Fail(validationError));
+
+        var entity = _mapper.Map<TEntity>(vm);
+
+        await _service.AddAsync(entity, files);
+        await _service.SaveAsync();
+
+        var resultVm = _mapper.Map<TViewModel>(entity);
+
+        return CreatedAtAction(
+            nameof(Get),
+            new { id = entity.Id },
+            ApiResponse<TViewModel>.Ok(resultVm, "Created successfully")
+        );
+    }
+
     // ---------------- UPDATE ----------------
     [HttpPut("{id}")]
     public async Task<ActionResult<ApiResponse<object>>> Update(Guid id, [FromBody] TViewModel vm)
@@ -239,17 +261,24 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
     {
         if (file.Length == 0) continue;
 
-        using var mem = new MemoryStream();
-        await file.CopyToAsync(mem);
-
-        var input = new MediaFileInput
+        try
         {
-            FileName = file.FileName,
-            ContentType = file.ContentType,
-            Data = mem.ToArray()
-        };
+            using var mem = new MemoryStream();
+            await file.CopyToAsync(mem);
 
-        await ms.UploadAsync(typeof(TEntity).Name, id, input);
+            var input = new MediaFileInput
+            {
+                FileName = file.FileName,
+                ContentType = file.ContentType,
+                Data = mem.ToArray()
+            };
+
+            await ms.UploadAsync(typeof(TEntity).Name, id, input);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
 
     return Ok(ApiResponse<object>.Ok(null, "Media uploaded successfully"));

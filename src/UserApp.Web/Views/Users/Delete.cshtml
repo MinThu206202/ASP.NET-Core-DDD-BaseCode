@@ -3,11 +3,31 @@
     ViewData["Title"] = "Delete User";
 }
 
-<h2>Delete User</h2>
-<p>Are you sure you want to delete <strong>@Model.Email</strong>?</p>
+<div class="animate-fade-in">
+    <div class="mb-8">
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight">Delete User</h1>
+        <p class="text-slate-500 text-sm mt-1">This action cannot be undone.</p>
+    </div>
 
-<form asp-action="DeleteConfirmed" method="post">
-    <input asp-for="Id" type="hidden" />
-    <button class="btn btn-danger" type="submit">Delete</button>
-    <a class="btn btn-secondary" asp-action="Index">Cancel</a>
-</form>
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8 max-w-lg">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="p-3 rounded-full bg-rose-50">
+                <svg class="w-8 h-8 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-lg font-bold text-slate-800">Confirm Deletion</h2>
+                <p class="text-sm text-slate-500 mt-0.5">Are you sure you want to delete <strong>@Model.Email</strong>?</p>
+            </div>
+        </div>
+
+        <form asp-action="DeleteConfirmed" method="post">
+            <input asp-for="Id" type="hidden" />
+            <div class="flex justify-end gap-3">
+                <a asp-action="Index" class="px-5 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">Cancel</a>
+                <button type="submit" class="px-5 py-2.5 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm">Delete</button>
+            </div>
+        </form>
+    </div>
+</div>

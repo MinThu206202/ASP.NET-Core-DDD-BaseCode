@@ -215,6 +215,36 @@ using (var scope = app.Services.CreateScope())
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedRolesAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedAdminRolePermissionsAsync(db);
+    await SeedFlashMessages(db);
+}
+
+static async Task SeedFlashMessages(AppDbContext db)
+{
+    var existing = db.Set<UserApp.Domain.CommonTables.CommonTable>()
+        .Where(x => x.Type == "FlashMessage")
+        .Select(x => x.Code)
+        .ToHashSet();
+
+    var modules = new[] { "Category", "Milk", "Ai", "Pap", "Coco" };
+    var actions = new[] { "Create", "Edit", "Delete" };
+
+    foreach (var module in modules)
+    {
+        foreach (var action in actions)
+        {
+            var code = $"{module}{action}";
+            if (existing.Contains(code)) continue;
+
+            db.Set<UserApp.Domain.CommonTables.CommonTable>().Add(new()
+            {
+                Type = "FlashMessage",
+                Code = code,
+                Name = $"{module} {action.ToLower()} successfully"
+            });
+        }
+    }
+
+    await db.SaveChangesAsync();
 }
 
 await app.InitializeDatabaseAsync();

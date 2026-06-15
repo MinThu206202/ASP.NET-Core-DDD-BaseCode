@@ -10,7 +10,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
 
     <style>
@@ -57,9 +56,148 @@
         .validation-summary-errors li {
             padding: 0.25rem 0;
         }
+
+        /* --- Custom Keyframe Animations for Pill Toasts --- */
+        @@keyframes toastSlideIn {
+            0% {
+                transform: translateX(calc(100% + 24px)) scale(0.92);
+                opacity: 0;
+            }
+            100% {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+            }
+        }
+        @@keyframes toastSlideOut {
+            0% {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+                max-height: 120px;
+                margin-bottom: 0.75rem;
+            }
+            100% {
+                transform: translateX(calc(100% + 24px)) scale(0.9);
+                opacity: 0;
+                max-height: 0;
+                margin-bottom: 0;
+                padding-top: 0;
+                padding-bottom: 0;
+            }
+        }
+        @@keyframes toastProgressBar {
+            from {
+                width: 100%;
+            }
+            to {
+                width: 0%;
+            }
+        }
+
+        /* Classes mapped to interactive transitions */
+        .toast-notification {
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .toast-notification-enter {
+            animation: toastSlideIn 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .toast-notification-exit {
+            animation: toastSlideOut 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+        .toast-progress-bar {
+            animation: toastProgressBar 5s linear forwards;
+        }
+
+        /* Pause interaction configuration */
+        .toast-notification:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.08) !important;
+        }
+        .toast-notification:hover .toast-progress-bar {
+            animation-play-state: paused;
+        }
     </style>
 </head>
 <body class="bg-slate-50 text-slate-800 antialiased">
+
+    <!-- Fixed Right-Side Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-6 right-0 z-[9999] flex flex-col gap-2 w-full max-w-[340px] pointer-events-none pl-3">
+        
+        <!-- SUCCESS TOAST -->
+        @if (TempData["Success"] is string successMsg)
+        {
+            <div id="flashMessage" class="toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white/95 backdrop-blur-md rounded-l-3xl rounded-r-none shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                <div class="flex items-center gap-3 pl-4 pr-5 py-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-500 shrink-0 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col min-w-0 leading-tight">
+                        <span class="text-sm font-bold text-slate-800 tracking-tight">Success</span>
+                        <span class="text-sm font-medium text-slate-500 truncate mt-0.5">@successMsg</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[2.5px] bg-emerald-400/50 toast-progress-bar origin-left"></div>
+            </div>
+        }
+
+        <!-- ERROR TOAST -->
+        @if (TempData["Error"] is string errorMsg)
+        {
+            <div id="flashMessage" class="toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white/95 backdrop-blur-md rounded-l-3xl rounded-r-none shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                <div class="flex items-center gap-3 pl-4 pr-5 py-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-red-400 to-red-500 shrink-0 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col min-w-0 leading-tight">
+                        <span class="text-sm font-bold text-slate-800 tracking-tight">Error</span>
+                        <span class="text-sm font-medium text-slate-500 truncate mt-0.5">@errorMsg</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[2.5px] bg-red-400/50 toast-progress-bar origin-left"></div>
+            </div>
+        }
+
+        <!-- WARNING TOAST -->
+        @if (TempData["Warning"] is string warningMsg)
+        {
+            <div id="flashMessage" class="toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white/95 backdrop-blur-md rounded-l-3xl rounded-r-none shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                <div class="flex items-center gap-3 pl-4 pr-5 py-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-amber-400 to-amber-500 shrink-0 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col min-w-0 leading-tight">
+                        <span class="text-sm font-bold text-slate-800 tracking-tight">Warning</span>
+                        <span class="text-sm font-medium text-slate-500 truncate mt-0.5">@warningMsg</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[2.5px] bg-amber-400/50 toast-progress-bar origin-left"></div>
+            </div>
+        }
+
+        <!-- INFO TOAST -->
+        @if (TempData["Info"] is string infoMsg)
+        {
+            <div id="flashMessage" class="toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white/95 backdrop-blur-md rounded-l-3xl rounded-r-none shadow-[0_8px_30px_rgb(0,0,0,0.06)] border border-slate-100 overflow-hidden">
+                <div class="flex items-center gap-3 pl-4 pr-5 py-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-sky-400 to-sky-500 shrink-0 flex items-center justify-center shadow-sm">
+                        <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 101.063.852l-.708 2.836a.75.75 0 001.063.852l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z"/>
+                        </svg>
+                    </div>
+                    <div class="flex flex-col min-w-0 leading-tight">
+                        <span class="text-sm font-bold text-slate-800 tracking-tight">Info</span>
+                        <span class="text-sm font-medium text-slate-500 truncate mt-0.5">@infoMsg</span>
+                    </div>
+                </div>
+                <div class="absolute bottom-0 left-0 h-[2.5px] bg-sky-400/50 toast-progress-bar origin-left"></div>
+            </div>
+        }
+    </div>
 
     <header class="md:hidden bg-slate-900 text-white flex items-center justify-between px-4 py-3 shadow-md fixed top-0 left-0 right-0 z-50">
         <span class="text-xl font-black tracking-wider text-indigo-400">UserApp Suite</span>
@@ -136,6 +274,7 @@
                 </nav>
             </div>
 
+            <!-- Profile Info Widget inside Sidebar -->
             <div class="pt-6 border-t border-slate-800 flex items-center space-x-3">
                 <div class="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold text-sm">
                     @(!string.IsNullOrEmpty(User.Identity?.Name) ? User.Identity.Name.Substring(0, Math.Min(3, User.Identity.Name.Length)).ToUpper() : "ADM")
@@ -198,8 +337,39 @@
         </main>
     </div>
 
+    <!-- Scripting Context -->
     <script>
+        // Dismiss toast functionality (Close & Exit animations)
+        function dismissToast(elementId) {
+            const el = document.getElementById(elementId);
+            if (el) {
+                // Remove entrance class and add departure class
+                el.classList.remove('toast-notification-enter');
+                el.classList.add('toast-notification-exit');
+                
+                // Remove element completely once exit animation has ended
+                el.addEventListener('animationend', function handler(e) {
+                    if (e.animationName === 'toastSlideOut') {
+                        el.remove();
+                    }
+                });
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", function () {
+            // Interactive Timer Handler
+            const flashMsg = document.getElementById('flashMessage');
+            if (flashMsg) {
+                const progressBar = flashMsg.querySelector('.toast-progress-bar');
+                
+                // If progress bar finishes its animation, automatically dismiss the toast
+                if (progressBar) {
+                    progressBar.addEventListener('animationend', function() {
+                        dismissToast('flashMessage');
+                    });
+                }
+            }
+
             // Mobile Sidebar elements
             const mobileMenuBtn = document.getElementById("mobileMenuBtn");
             const sidebar = document.getElementById("sidebar");
@@ -254,6 +424,77 @@
                     }
                 });
             }
+        });
+    </script>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="fixed inset-0 z-50 hidden" role="dialog">
+        <div class="absolute inset-0 bg-black/50 transition-opacity"></div>
+        <div class="flex items-center justify-center min-h-full p-4">
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 transform transition-all">
+                <div class="flex items-center gap-4 mb-4">
+                    <div class="p-2.5 rounded-full bg-rose-50">
+                        <svg class="w-6 h-6 text-rose-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-800">Confirm Delete</h3>
+                        <p class="text-sm text-slate-500 mt-0.5">Are you sure you want to delete this? This action cannot be undone.</p>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 mt-6">
+                    <button type="button" id="cancelDeleteBtn" class="px-4 py-2 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                        Cancel
+                    </button>
+                    <button type="button" id="confirmDeleteBtn" class="px-4 py-2 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-sm">
+                        Delete
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var deleteModal = document.getElementById('deleteModal');
+            var confirmBtn = document.getElementById('confirmDeleteBtn');
+            var cancelBtn = document.getElementById('cancelDeleteBtn');
+            var activeForm = null;
+
+            function openModal(form) {
+                activeForm = form;
+                deleteModal.classList.remove('hidden');
+            }
+
+            function closeModal() {
+                deleteModal.classList.add('hidden');
+                activeForm = null;
+            }
+
+            document.querySelectorAll('[data-confirm-delete]').forEach(function (btn) {
+                btn.addEventListener('click', function (e) {
+                    var form = btn.closest('form');
+                    if (form) openModal(form);
+                });
+            });
+
+            confirmBtn.addEventListener('click', function () {
+                if (activeForm) {
+                    activeForm.submit();
+                }
+                closeModal();
+            });
+
+            cancelBtn.addEventListener('click', closeModal);
+
+            deleteModal.addEventListener('click', function (e) {
+                if (e.target === deleteModal) closeModal();
+            });
+
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') closeModal();
+            });
         });
     </script>
 

@@ -105,6 +105,30 @@ public class ModuleGeneratorService : IModuleGeneratorService
         }
 
         repo.SaveChangesAsync().GetAwaiter().GetResult();
+
+        SeedFlashMessages(repo, moduleName);
+    }
+
+    private static void SeedFlashMessages(ICommonTableRepository repo, string moduleName)
+    {
+        var messages = new Dictionary<string, string>
+        {
+            [$"{moduleName}Create"] = $"{moduleName} created successfully",
+            [$"{moduleName}Edit"] = $"{moduleName} updated successfully",
+            [$"{moduleName}Delete"] = $"{moduleName} deleted successfully"
+        };
+
+        foreach (var kvp in messages)
+        {
+            repo.AddAsync(new CommonTable
+            {
+                Type = "FlashMessage",
+                Code = kvp.Key,
+                Name = kvp.Value
+            }).GetAwaiter().GetResult();
+        }
+
+        repo.SaveChangesAsync().GetAwaiter().GetResult();
     }
 
     private static string Capitalize(string input)
