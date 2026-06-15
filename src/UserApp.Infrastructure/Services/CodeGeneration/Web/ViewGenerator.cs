@@ -210,6 +210,7 @@ public class ViewGenerator
 <div>
     <label class=""block text-sm font-bold text-slate-700 mb-1.5"">Images</label>
     <input type=""file"" name=""files"" multiple class=""w-full"" />
+    <span asp-validation-for=""files"" class=""text-xs text-rose-500 mt-1""></span>
 </div>");
         }
 

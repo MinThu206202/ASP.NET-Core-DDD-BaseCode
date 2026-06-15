@@ -169,7 +169,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     [ValidateAntiForgeryToken]
     public virtual async Task<IActionResult> Create(TViewModel vm, List<IFormFile>? files = null)
     {
-        if (!ValidateModel(vm))
+        if (!ValidateModel(vm) || !ValidateFiles(files))
         {
             await PopulateLookupOptions(vm);
             return View(vm);
@@ -177,7 +177,16 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
         var entity = _mapper.Map<TEntity>(vm);
 
-        await _service.AddAsync(entity, files);
+        try
+        {
+            await _service.AddAsync(entity, files);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("files", ex.Message);
+            await PopulateLookupOptions(vm);
+            return View(vm);
+        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -198,8 +207,9 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     [ValidateAntiForgeryToken]
     public virtual async Task<IActionResult> Edit(Guid id, TViewModel vm, List<IFormFile>? files = null)
     {
-        if (!ModelState.IsValid)
+        if (!ModelState.IsValid || !ValidateFiles(Request.Form.Files))
         {
+            await LoadImageUrls(vm, id);
             await PopulateLookupOptions(vm);
             return View("Edit", vm);
         }
@@ -209,32 +219,42 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
         _mapper.Map(vm, entity);
 
-        var mediaService = MediaService;
-        if (mediaService != null)
+        try
         {
-            var entityName = typeof(TEntity).Name;
-            foreach (var formFile in Request.Form.Files)
+            var mediaService = MediaService;
+            if (mediaService != null)
             {
-                if (!formFile.Name.StartsWith("replace_") || formFile.Length == 0) continue;
-
-                var mediaIdStr = formFile.Name["replace_".Length..];
-                if (!Guid.TryParse(mediaIdStr, out var mediaId)) continue;
-
-                await mediaService.DeleteAsync(mediaId);
-
-                using var ms = new MemoryStream();
-                await formFile.CopyToAsync(ms);
-                var input = new MediaFileInput
+                var entityName = typeof(TEntity).Name;
+                foreach (var formFile in Request.Form.Files)
                 {
-                    FileName = formFile.FileName,
-                    ContentType = formFile.ContentType,
-                    Data = ms.ToArray()
-                };
-                await mediaService.UploadAsync(entityName, id, input);
-            }
-        }
+                    if (!formFile.Name.StartsWith("replace_") || formFile.Length == 0) continue;
 
-        await _service.UpdateAsync(entity, files);
+                    var mediaIdStr = formFile.Name["replace_".Length..];
+                    if (!Guid.TryParse(mediaIdStr, out var mediaId)) continue;
+
+                    await mediaService.DeleteAsync(mediaId);
+
+                    using var ms = new MemoryStream();
+                    await formFile.CopyToAsync(ms);
+                    var input = new MediaFileInput
+                    {
+                        FileName = formFile.FileName,
+                        ContentType = formFile.ContentType,
+                        Data = ms.ToArray()
+                    };
+                    await mediaService.UploadAsync(entityName, id, input);
+                }
+            }
+
+            await _service.UpdateAsync(entity, files);
+        }
+        catch (InvalidOperationException ex)
+        {
+            ModelState.AddModelError("files", ex.Message);
+            await LoadImageUrls(vm, id);
+            await PopulateLookupOptions(vm);
+            return View("Edit", vm);
+        }
 
         return RedirectToAction(nameof(Index));
     }
@@ -273,6 +293,31 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         }
 
         return ModelState.IsValid;
+    }
+
+    private bool ValidateFiles(IEnumerable<IFormFile>? files)
+    {
+        if (files == null || !files.Any()) return true;
+
+        const int maxSize = 5 * 1024 * 1024;
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+
+        foreach (var file in files)
+        {
+            if (file.Length > maxSize)
+            {
+                ModelState.AddModelError("files", "Image size must be 5 MB or smaller.");
+                return false;
+            }
+
+            if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+            {
+                ModelState.AddModelError("files", "Only JPG, PNG, and WEBP files are allowed.");
+                return false;
+            }
+        }
+
+        return true;
     }
 
     protected async Task<bool> HasPermission(string permission)

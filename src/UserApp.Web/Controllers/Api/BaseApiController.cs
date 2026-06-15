@@ -231,6 +231,10 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
     if (ms == null)
         return BadRequest(ApiResponse<object>.Fail("Media upload not supported for this entity"));
 
+    var validationError = ValidateApiFiles(files);
+    if (validationError != null)
+        return BadRequest(ApiResponse<object>.Fail(validationError));
+
     foreach (var file in files)
     {
         if (file.Length == 0) continue;
@@ -245,14 +249,7 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
             Data = mem.ToArray()
         };
 
-        try
-        {
-            await ms.UploadAsync(typeof(TEntity).Name, id, input);
-        }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
-        }
+        await ms.UploadAsync(typeof(TEntity).Name, id, input);
     }
 
     return Ok(ApiResponse<object>.Ok(null, "Media uploaded successfully"));
@@ -292,5 +289,22 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
         await ms.DeleteAsync(mediaId);
 
         return Ok(ApiResponse<object>.Ok(null, "Media deleted successfully"));
+    }
+
+    private static string? ValidateApiFiles(IEnumerable<IFormFile> files)
+    {
+        const int maxSize = 5 * 1024 * 1024;
+        var allowedTypes = new[] { "image/jpeg", "image/png", "image/webp" };
+
+        foreach (var file in files)
+        {
+            if (file.Length > maxSize)
+                return "Image size must be 5 MB or smaller.";
+
+            if (!allowedTypes.Contains(file.ContentType.ToLowerInvariant()))
+                return "Only JPG, PNG, and WEBP files are allowed.";
+        }
+
+        return null;
     }
 }
