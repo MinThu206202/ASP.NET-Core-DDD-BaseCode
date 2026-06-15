@@ -64,6 +64,11 @@ public class DomainGenerator
                 sb.AppendLine(
                     $"    public string {field.Name} {{ get; set; }} = string.Empty;");
             }
+            else if (field.IsRelation)
+            {
+                sb.AppendLine(
+                    $"    public Guid {field.Name}Id {{ get; set; }}");
+            }
             else
             {
                 sb.AppendLine($"    public {field.Type}{nullable} {field.Name} {{ get; set; }}");

@@ -108,6 +108,17 @@ public class WebGenerator
                 sb.AppendLine(
                     $"    public string {name} {{ get; set; }} = string.Empty;");
             }
+            else if (field.IsRelation)
+            {
+                sb.AppendLine(
+                    $"    [Required(ErrorMessage = \"{name} is required\")]");
+                sb.AppendLine(
+                    $"    public Guid {name}Id {{ get; set; }}");
+                sb.AppendLine(
+                    $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public string {name}Name {{ get; set; }} = string.Empty;");
+            }
             else
             {
                 var nullable = field.IsNullable ? "?" : string.Empty;
@@ -145,6 +156,9 @@ public class WebGenerator
             || type.Equals("double", StringComparison.OrdinalIgnoreCase)
             || type.Equals("float", StringComparison.OrdinalIgnoreCase)
             || type.Equals("long", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsBooleanType(string type)
+        => type.Equals("bool", StringComparison.OrdinalIgnoreCase);
 
     private static bool HasStringLengthValidation(ModuleFieldDto field)
         => field.MinLength.HasValue

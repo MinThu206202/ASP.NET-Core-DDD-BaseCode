@@ -14,4 +14,7 @@ public class ModuleFieldViewModel
 
     public string? EnumValues { get; set; }
     public bool UseCommonTable { get; set; }
+
+    public bool IsRelation { get; set; }
+    public string? RelatedEntityName { get; set; }
 }

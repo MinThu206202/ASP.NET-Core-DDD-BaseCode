@@ -123,6 +123,126 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         }
     }
 
+    private async Task PopulateRelationOptions(object vm)
+    {
+        var vmType = vm.GetType();
+        var sp = HttpContext?.RequestServices;
+        if (sp == null) return;
+
+        foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(List<SelectListItem>) || !prop.CanWrite) continue;
+
+            var fieldName = prop.Name.EndsWith("Options") ? prop.Name[..^"Options".Length] : null;
+            if (string.IsNullOrEmpty(fieldName)) continue;
+
+            var idProp = vmType.GetProperty($"{fieldName}Id");
+            if (idProp == null || idProp.PropertyType != typeof(Guid)) continue;
+
+            var options = await LoadEntityLookupOptions(fieldName);
+            prop.SetValue(vm, options);
+        }
+    }
+
+    private async Task<List<SelectListItem>> LoadEntityLookupOptions(string entityName)
+    {
+        try
+        {
+            var sp = HttpContext?.RequestServices;
+            if (sp == null) return new();
+
+            var entityType = Type.GetType($"UserApp.Domain.{entityName}s.{entityName}, UserApp.Domain");
+            if (entityType == null) return new();
+
+            var serviceType = typeof(IBaseService<>).MakeGenericType(entityType);
+            var service = sp.GetService(serviceType);
+            if (service == null) return new();
+
+            var listMethod = serviceType.GetMethod("ListAsync", new[] { typeof(int), typeof(int) });
+            if (listMethod == null) return new();
+
+            var task = (Task)listMethod.Invoke(service, new object[] { 0, 9999 })!;
+            await task.ConfigureAwait(false);
+
+            var resultProperty = task.GetType().GetProperty("Result");
+            if (resultProperty == null) return new();
+            var entities = (IEnumerable<object>)resultProperty.GetValue(task)!;
+
+            var idProp = entityType.GetProperty("Id");
+            var nameProp = entityType.GetProperty("Name");
+
+            return entities.Select(e => new SelectListItem
+            {
+                Value = idProp?.GetValue(e)?.ToString() ?? "",
+                Text = nameProp?.GetValue(e)?.ToString() ?? e.ToString() ?? ""
+            }).ToList();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private async Task ResolveRelationDisplayNames(List<TViewModel> items)
+    {
+        var vmType = typeof(TViewModel);
+
+        foreach (var item in items)
+        {
+            foreach (var nameProp in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (nameProp.PropertyType != typeof(string) || !nameProp.CanWrite) continue;
+                if (!nameProp.Name.EndsWith("Name")) continue;
+
+                var fieldName = nameProp.Name[..^"Name".Length];
+                var idProp = vmType.GetProperty($"{fieldName}Id");
+                if (idProp == null || idProp.PropertyType != typeof(Guid)) continue;
+
+                var idValue = idProp.GetValue(item);
+                if (idValue == null || (Guid)idValue == Guid.Empty) continue;
+
+                var entityName = fieldName;
+                var displayName = await LoadEntityDisplayName(entityName, (Guid)idValue);
+                if (displayName != null)
+                    nameProp.SetValue(item, displayName);
+            }
+        }
+    }
+
+    private async Task<string?> LoadEntityDisplayName(string entityName, Guid id)
+    {
+        try
+        {
+            var sp = HttpContext?.RequestServices;
+            if (sp == null) return null;
+
+            var entityType = Type.GetType($"UserApp.Domain.{entityName}s.{entityName}, UserApp.Domain");
+            if (entityType == null) return null;
+
+            var serviceType = typeof(IBaseService<>).MakeGenericType(entityType);
+            var service = sp.GetService(serviceType);
+            if (service == null) return null;
+
+            var getMethod = serviceType.GetMethod("GetByIdAsync", new[] { typeof(Guid) });
+            if (getMethod == null) return null;
+
+            var task = (Task)getMethod.Invoke(service, new object[] { id })!;
+            await task.ConfigureAwait(false);
+
+            var resultProperty = task.GetType().GetProperty("Result");
+            if (resultProperty == null) return null;
+            var entity = resultProperty.GetValue(task);
+            if (entity == null) return null;
+
+            var nameProp = entityType.GetProperty("Name");
+            return nameProp?.GetValue(entity)?.ToString();
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
     public virtual async Task<IActionResult> Index(int page = 1, int size = 10)
     {
         var data = await _service.ListAsync((page - 1) * size, size);
@@ -136,6 +256,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         }
 
         await ResolveLookupDisplayNames(items);
+        await ResolveRelationDisplayNames(items);
 
         return View("Index", new ListViewModel<TViewModel>
         {
@@ -154,6 +275,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         var vm = _mapper.Map<TViewModel>(entity);
         await LoadImageUrls(vm, id);
         await ResolveLookupDisplayNames([vm]);
+        await ResolveRelationDisplayNames([vm]);
 
         return View("Details", vm);
     }
@@ -162,6 +284,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
     {
         var vm = new TViewModel();
         await PopulateLookupOptions(vm);
+        await PopulateRelationOptions(vm);
         return View("Create", vm);
     }
 
@@ -172,6 +295,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         if (!ValidateModel(vm) || !ValidateFiles(files))
         {
             await PopulateLookupOptions(vm);
+            await PopulateRelationOptions(vm);
             return View(vm);
         }
 
@@ -185,6 +309,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         {
             ModelState.AddModelError("files", ex.Message);
             await PopulateLookupOptions(vm);
+            await PopulateRelationOptions(vm);
             return View(vm);
         }
 
@@ -200,6 +325,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         var vm = _mapper.Map<TViewModel>(entity);
         await LoadImageUrls(vm, id);
         await PopulateLookupOptions(vm);
+        await PopulateRelationOptions(vm);
 
         return View("Edit", vm);
     }
@@ -212,6 +338,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         {
             await LoadImageUrls(vm, id);
             await PopulateLookupOptions(vm);
+            await PopulateRelationOptions(vm);
             return View("Edit", vm);
         }
 
@@ -254,6 +381,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             ModelState.AddModelError("files", ex.Message);
             await LoadImageUrls(vm, id);
             await PopulateLookupOptions(vm);
+            await PopulateRelationOptions(vm);
             return View("Edit", vm);
         }
 

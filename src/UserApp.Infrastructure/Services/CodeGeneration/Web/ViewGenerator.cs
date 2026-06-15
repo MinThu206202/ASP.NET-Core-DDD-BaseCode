@@ -60,6 +60,9 @@ public class ViewGenerator
     private static bool IsEnumType(string type)
         => type.Equals("enum", StringComparison.OrdinalIgnoreCase);
 
+    private static bool IsBooleanType(string type)
+        => type.Equals("bool", StringComparison.OrdinalIgnoreCase);
+
     // =========================
     // TABLE
     // =========================
@@ -96,9 +99,11 @@ public class ViewGenerator
             if (field.Name.Equals("Name", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var displayValue = field.UseCommonTable
+            var displayValue = field.IsRelation
                 ? $"@p.{field.Name}Name"
-                : $"@p.{field.Name}";
+                : field.UseCommonTable
+                    ? $"@p.{field.Name}Name"
+                    : $"@p.{field.Name}";
 
             sb.AppendLine($@"<td class=""px-6 py-4 text-slate-600"">{displayValue}</td>");
         }
@@ -135,9 +140,28 @@ public class ViewGenerator
                 continue;
 
             // =========================
+            // RELATION → DROPDOWN (only when type is "relation")
+            // =========================
+            if (field.IsRelation && field.Type.Equals("relation", StringComparison.OrdinalIgnoreCase))
+            {
+                sb.AppendLine($@"
+<div>
+    <label asp-for=""{field.Name}Id"" class=""block text-sm font-bold text-slate-700 mb-1.5"">
+        {field.Name}
+    </label>
+
+    <select asp-for=""{field.Name}Id"" asp-items=""Model.{field.Name}Options""
+            class=""w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50"">
+        <option value="""">-- Select {field.Name} --</option>
+    </select>
+
+    <span asp-validation-for=""{field.Name}Id"" class=""text-xs text-rose-500 mt-1""></span>
+</div>");
+            }
+            // =========================
             // ENUM FIELD
             // =========================
-            if (IsEnumType(field.Type))
+            else if (IsEnumType(field.Type))
             {
                 if (field.UseCommonTable)
                 {
@@ -184,6 +208,21 @@ public class ViewGenerator
 </div>");
                 }
             }
+            else if (IsBooleanType(field.Type))
+            {
+                // =========================
+                // BOOLEAN → SINGLE CHECKBOX
+                // =========================
+                sb.AppendLine($@"
+<div>
+    <label class=""inline-flex items-center gap-2.5 cursor-pointer"">
+        <input type=""checkbox"" asp-for=""{field.Name}""
+               class=""w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"" />
+        <span class=""text-sm font-medium text-slate-700"">{field.Name}</span>
+    </label>
+    <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
+</div>");
+            }
             else
             {
                 // =========================
@@ -210,7 +249,7 @@ public class ViewGenerator
 <div>
     <label class=""block text-sm font-bold text-slate-700 mb-1.5"">Images</label>
     <input type=""file"" name=""files"" multiple class=""w-full"" />
-    <span asp-validation-for=""files"" class=""text-xs text-rose-500 mt-1""></span>
+    @Html.ValidationMessage(""files"", new { @class = ""text-xs text-rose-500 mt-1"" })
 </div>");
         }
 
