@@ -125,36 +125,43 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
 
     // ---------------- MEDIA UPLOAD ----------------
     [HttpPost("{id}/media")]
-    [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<IFormFile> files)
+[RequestSizeLimit(10 * 1024 * 1024)]
+public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<IFormFile> files)
+{
+    var entity = await _service.GetByIdAsync(id);
+    if (entity == null)
+        return NotFound(ApiResponse<object>.Fail("Data not found"));
+
+    var ms = MediaService;
+    if (ms == null)
+        return BadRequest(ApiResponse<object>.Fail("Media upload not supported for this entity"));
+
+    foreach (var file in files)
     {
-        var entity = await _service.GetByIdAsync(id);
-        if (entity == null)
-            return NotFound(ApiResponse<object>.Fail("Data not found"));
+        if (file.Length == 0) continue;
 
-        var ms = MediaService;
-        if (ms == null)
-            return BadRequest(ApiResponse<object>.Fail("Media upload not supported for this entity"));
+        using var mem = new MemoryStream();
+        await file.CopyToAsync(mem);
 
-        foreach (var file in files)
+        var input = new MediaFileInput
         {
-            if (file.Length == 0) continue;
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            Data = mem.ToArray()
+        };
 
-            using var mem = new MemoryStream();
-            await file.CopyToAsync(mem);
-
-            var input = new MediaFileInput
-            {
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                Data = mem.ToArray()
-            };
-
+        try
+        {
             await ms.UploadAsync(typeof(TEntity).Name, id, input);
         }
-
-        return Ok(ApiResponse<object>.Ok(null, "Media uploaded successfully"));
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ApiResponse<object>.Fail(ex.Message));
+        }
     }
+
+    return Ok(ApiResponse<object>.Ok(null, "Media uploaded successfully"));
+}
 
     // ---------------- GET MEDIA ----------------
     [HttpGet("{id}/media")]

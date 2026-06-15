@@ -54,6 +54,9 @@ using UserApp.Application.CommonTables.Interfaces;
 using UserApp.Domain.Products;
 using UserApp.Application.Products;
 using UserApp.Application.Products.Interfaces;
+using UserApp.Domain.Humans;
+using UserApp.Application.Humans;
+using UserApp.Application.Humans.Interfaces;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -94,6 +97,7 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IHumanRepository, HumanRepository>();
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -116,6 +120,7 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICommonTableService, CommonTableService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IHumanService, HumanService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();

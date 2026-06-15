@@ -1,0 +1,115 @@
+@model UserApp.Web.ViewModels.HumanViewModel
+
+<div class="max-w-2xl mx-auto animate-fade-in">
+    <div class="mb-8">
+        <a asp-action="Index" class="inline-flex items-center gap-1.5 text-sm font-bold text-indigo-600 hover:text-indigo-700 transition-colors">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+            </svg>
+            Back to Humans
+        </a>
+        <h1 class="text-3xl font-black text-slate-800 tracking-tight mt-2">Create Human</h1>
+        <p class="text-slate-500 text-sm mt-1">Add a new Human record</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
+        <form asp-action="Create" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="ModelOnly" class="text-rose-600 mb-6 text-sm font-medium"></div>
+
+            <div class="space-y-6">
+
+<div>
+    <label asp-for="SystemCode" class="block text-sm font-bold text-slate-700 mb-1.5">
+        SystemCode
+    </label>
+
+    <input asp-for="SystemCode" value="HUMAN"
+           class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-500" readonly />
+
+    <span asp-validation-for="SystemCode" class="text-xs text-rose-500 mt-1"></span>
+</div>
+
+<div>
+    <label asp-for="Name" class="block text-sm font-bold text-slate-700 mb-1.5">
+        Name
+    </label>
+
+    <input asp-for="Name"
+           class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50" />
+
+    <span asp-validation-for="Name" class="text-xs text-rose-500 mt-1"></span>
+</div>
+
+<div>
+    <label asp-for="Age" class="block text-sm font-bold text-slate-700 mb-1.5">
+        Age
+    </label>
+
+    <input asp-for="Age"
+           class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50" />
+
+    <span asp-validation-for="Age" class="text-xs text-rose-500 mt-1"></span>
+</div>
+
+<div>
+    <label asp-for="Email" class="block text-sm font-bold text-slate-700 mb-1.5">
+        Email
+    </label>
+
+    <input asp-for="Email"
+           class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50" />
+
+    <span asp-validation-for="Email" class="text-xs text-rose-500 mt-1"></span>
+</div>
+
+<div>
+    <label asp-for="Gender" class="block text-sm font-bold text-slate-700 mb-1.5">
+        Gender
+    </label>
+
+    <select asp-for="Gender"
+            class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50">
+        <option value="">-- Select Gender --</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+    </select>
+
+    <span asp-validation-for="Gender" class="text-xs text-rose-500 mt-1"></span>
+</div>
+
+            </div>
+
+            <div class="flex items-center gap-3 mt-8 pt-6 border-t border-slate-100">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 px-6 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                    Save Human
+                </button>
+                <a asp-action="Index"
+                   class="px-6 py-2.5 text-sm font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                    Cancel
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>
+
+@section Scripts
+{
+    <partial name="_ValidationScriptsPartial" />
+}

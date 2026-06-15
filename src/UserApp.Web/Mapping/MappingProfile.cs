@@ -15,6 +15,7 @@ using UserApp.Domain.CommonTables;
 using UserApp.Web.ViewModels.CommonTables;
 using UserApp.Domain.Products;
 using UserApp.Web.ViewModels.Products;
+using UserApp.Domain.Humans;
 
 
 namespace UserApp.Web.Mapping;
@@ -59,6 +60,8 @@ CreateMap<Category, CategoryViewModel>();
 CreateMap<CategoryViewModel, Category>();
 CreateMap<Payment, PaymentViewModel>();
 CreateMap<PaymentViewModel, Payment>();
+CreateMap<Human, HumanViewModel>();
+CreateMap<HumanViewModel, Human>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();

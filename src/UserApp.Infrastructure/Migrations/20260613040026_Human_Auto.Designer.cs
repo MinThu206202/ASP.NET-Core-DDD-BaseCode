@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UserApp.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using UserApp.Infrastructure.Persistence;
 namespace UserApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260613040026_Human_Auto")]
+    partial class Human_Auto
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -110,16 +113,12 @@ namespace UserApp.Infrastructure.Migrations
                     b.ToTable("Cocos");
                 });
 
-            modelBuilder.Entity("UserApp.Domain.CommonTables.CommonTable", b =>
             modelBuilder.Entity("UserApp.Domain.Humans.Human", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("longtext");
                     b.Property<int>("Age")
                         .HasColumnType("int");
 
@@ -141,7 +140,6 @@ namespace UserApp.Infrastructure.Migrations
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<string>("Type")
                     b.Property<string>("SystemCode")
                         .IsRequired()
                         .HasColumnType("longtext");
@@ -151,7 +149,6 @@ namespace UserApp.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
-                    b.ToTable("CommonTables");
                     b.ToTable("Humans");
                 });
 
@@ -269,38 +266,6 @@ namespace UserApp.Infrastructure.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("Payments");
-                });
-
-            modelBuilder.Entity("UserApp.Domain.Products.Product", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("char(36)");
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<DateTime?>("DeletedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Paymet")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
-                    b.Property<DateTime?>("UpdatedAt")
-                        .HasColumnType("datetime(6)");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("Products");
                 });
 
             modelBuilder.Entity("UserApp.Domain.Roles.Permission", b =>
