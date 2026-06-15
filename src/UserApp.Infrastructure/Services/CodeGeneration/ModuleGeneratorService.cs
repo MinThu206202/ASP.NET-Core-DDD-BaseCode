@@ -1,8 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.Extensions.DependencyInjection;
+using UserApp.Application.Common;
 using UserApp.Application.Common.DTOs;
 using UserApp.Application.Common.Interfaces;
+using UserApp.Domain.CommonTables;
+using UserApp.Infrastructure.Persistence.Repositories;
 using UserApp.Infrastructure.Services.CodeGeneration;
 using UserApp.Infrastructure.Services.CodeGeneration.Shared;
 
@@ -40,7 +45,6 @@ public class ModuleGeneratorService : IModuleGeneratorService
 
     public Task GenerateModuleAsync(
         string moduleName,
-        string? systemCode,
         List<ModuleFieldDto> fields,
         bool runMigration = false,
         bool hasImage = false,
@@ -52,16 +56,12 @@ public class ModuleGeneratorService : IModuleGeneratorService
 
         var name = Capitalize(moduleName.Trim());
 
-        var code = string.IsNullOrWhiteSpace(systemCode)
-    ? GenerateSystemCode(name)
-    : systemCode.Trim().ToUpperInvariant();
-
         Console.WriteLine($"Generating module: {name}");
 
-        _domain.Generate(name, code, fields, hasImage);
+        _domain.Generate(name, fields, hasImage);
         _application.Generate(name);
         _infrastructure.Generate(name);
-        _web.Generate(name, code, fields, hasImage);
+        _web.Generate(name, fields, hasImage);
 
         _mappingUpdater.Update(name);
         _dbContextUpdater.Update(name);
@@ -73,19 +73,43 @@ public class ModuleGeneratorService : IModuleGeneratorService
         if (runDbUpdate)
             _migrationRunner.UpdateDatabase();
 
+        SeedCommonTableFields(name, fields);
+
         Console.WriteLine($"Module {name} generated successfully");
 
         return Task.CompletedTask;
     }
 
+    private static void SeedCommonTableFields(string moduleName, List<ModuleFieldDto> fields)
+    {
+        var repo = ServiceProviderAccessor.Current?.GetService<ICommonTableRepository>();
+        if (repo == null) return;
+
+        var commonTableFields = fields.Where(f => f.UseCommonTable && !string.IsNullOrWhiteSpace(f.EnumValues));
+
+        foreach (var field in commonTableFields)
+        {
+            var type = $"{moduleName}{field.Name}";
+            var options = field.EnumValues!
+                .Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var option in options)
+            {
+                repo.AddAsync(new CommonTable
+                {
+                    Type = type,
+                    Code = ToCode(option),
+                    Name = option
+                }).GetAwaiter().GetResult();
+            }
+        }
+
+        repo.SaveChangesAsync().GetAwaiter().GetResult();
+    }
+
     private static string Capitalize(string input)
         => char.ToUpperInvariant(input[0]) + input[1..];
-    private static string GenerateSystemCode(string name)
-    {
-        return System.Text.RegularExpressions.Regex.Replace(
-            name.Trim(),
-            "(?<=[a-z])([A-Z])",
-            "_$1"
-        ).Replace(" ", "_").Replace("-", "_").ToUpperInvariant();
-    }
+
+    internal static string ToCode(string value)
+        => value.Trim().Replace(' ', '_').ToUpperInvariant();
 }

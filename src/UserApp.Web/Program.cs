@@ -54,6 +54,12 @@ using UserApp.Application.CommonTables.Interfaces;
 using UserApp.Domain.Products;
 using UserApp.Application.Products;
 using UserApp.Application.Products.Interfaces;
+using UserApp.Domain.Students;
+using UserApp.Application.Students;
+using UserApp.Application.Students.Interfaces;
+using UserApp.Domain.Teachers;
+using UserApp.Application.Teachers;
+using UserApp.Application.Teachers.Interfaces;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -94,6 +100,8 @@ builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<IStudentRepository, StudentRepository>();
+builder.Services.AddScoped<ITeacherRepository, TeacherRepository>();
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -116,6 +124,8 @@ builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICommonTableService, CommonTableService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ITeacherService, TeacherService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();

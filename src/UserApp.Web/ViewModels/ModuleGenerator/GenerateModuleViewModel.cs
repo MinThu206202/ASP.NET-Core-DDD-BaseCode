@@ -4,8 +4,6 @@ public class GenerateModuleViewModel
 {
     public string ModuleName { get; set; } = string.Empty;
 
-    public string? SystemCode { get; set; }
-
     public bool RunMigration { get; set; }   // NEW
     public bool RunDbUpdate { get; set; }    // NEW
     public bool HasImage { get; set; }       // NEW

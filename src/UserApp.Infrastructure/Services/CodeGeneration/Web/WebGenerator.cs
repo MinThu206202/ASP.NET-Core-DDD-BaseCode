@@ -22,7 +22,7 @@ public class WebGenerator
         _views = new ViewGenerator(_paths, _files, _templates);
     }
 
-    public void Generate(string name, string code, List<ModuleFieldDto> fields, bool hasImage)
+    public void Generate(string name, List<ModuleFieldDto> fields, bool hasImage)
     {
         var controllersFolder = Path.Combine(_paths.SrcRoot, "UserApp.Web", "Controllers");
         var apiControllersFolder = Path.Combine(controllersFolder, "Api");
@@ -51,23 +51,20 @@ public class WebGenerator
             new Dictionary<string, string>
             {
                 ["Name"] = name,
-                ["Properties"] = BuildViewModelProperties(fields, code, hasImage)
+                ["Properties"] = BuildViewModelProperties(fields, hasImage)
             });
 
         _files.WriteFile(Path.Combine(controllersFolder, $"{name}Controller.cs"), controllerContent);
         _files.WriteFile(Path.Combine(apiControllersFolder, $"{name}ApiController.cs"), apiControllerContent);
         _files.WriteFile(Path.Combine(viewModelsFolder, $"{name}ViewModel.cs"), viewModelContent);
 
-        _views.GenerateViews(name, code, fields, hasImage);
+        _views.GenerateViews(name, fields, hasImage);
     }
 
-    private static string BuildViewModelProperties(List<ModuleFieldDto> fields, string code, bool hasImage)
+    private static string BuildViewModelProperties(List<ModuleFieldDto> fields, bool hasImage)
     {
         var sb = new StringBuilder();
 
-        sb.AppendLine(@"    [Required(ErrorMessage = ""SystemCode is required"")]
-    public string SystemCode { get; set; } = string.Empty;
-");
 
         foreach (var field in fields)
         {
@@ -115,6 +112,14 @@ public class WebGenerator
             {
                 var nullable = field.IsNullable ? "?" : string.Empty;
                 sb.AppendLine($"    public {type}{nullable} {name} {{ get; set; }}");
+            }
+
+            if (field.UseCommonTable)
+            {
+                sb.AppendLine(
+                    $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public string {name}Name {{ get; set; }} = string.Empty;");
             }
 
             sb.AppendLine();
