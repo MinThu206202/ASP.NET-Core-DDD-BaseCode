@@ -62,7 +62,8 @@ public class ModuleGeneratorController : Controller
                 EnumValues = x.EnumValues,
                 UseCommonTable = x.UseCommonTable,
                 IsRelation = x.IsRelation,
-                RelatedEntityName = x.RelatedEntityName
+                RelatedEntityName = x.RelatedEntityName,
+                IsPivot = x.IsPivot
             }).ToList();
 
         await _service.GenerateModuleAsync(
