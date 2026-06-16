@@ -61,6 +61,7 @@ public class ModuleGeneratorController : Controller
                 MaxValue = x.MaxValue,
                 EnumValues = x.EnumValues,
                 UseCommonTable = x.UseCommonTable,
+                EnumRenderAsCheckbox = x.EnumRenderAsCheckbox,
                 IsRelation = x.IsRelation,
                 RelatedEntityName = x.RelatedEntityName,
                 IsPivot = x.IsPivot

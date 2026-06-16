@@ -23,6 +23,7 @@ public class ViewGenerator
         _files.EnsureDirectory(viewFolder);
 
         var hasPivot = fields.Any(f => f.IsPivot);
+        var hasCheckbox = fields.Any(f => f.EnumRenderAsCheckbox);
 
         var indexContent = _templates.RenderFile(
             new[] { "Web", "Templates", "Index.tpl" },
@@ -39,7 +40,7 @@ public class ViewGenerator
             {
                 ["Name"] = name,
                 ["Inputs"] = BuildFormInputs(fields, hasImage),
-                ["Scripts"] = BuildPivotScripts(hasPivot)
+                ["Scripts"] = BuildCheckboxScripts(hasCheckbox) + BuildPivotScripts(hasPivot)
             });
 
         var editContent = _templates.RenderFile(
@@ -49,7 +50,7 @@ public class ViewGenerator
                 ["Name"] = name,
                 ["CurrentImages"] = BuildCurrentImages(hasImage),
                 ["Inputs"] = BuildFormInputs(fields, hasImage),
-                ["Scripts"] = BuildMediaScripts(hasImage) + BuildPivotScripts(hasPivot)
+                ["Scripts"] = BuildMediaScripts(hasImage) + BuildCheckboxScripts(hasCheckbox) + BuildPivotScripts(hasPivot)
             });
 
         _files.WriteFile(Path.Combine(viewFolder, "Index.cshtml"), indexContent);
@@ -195,7 +196,7 @@ public class ViewGenerator
                 }
             }
             // =========================
-            // ENUM FIELD
+            // ENUM FIELD (radio/checkbox)
             // =========================
             else if (IsEnumType(field.Type))
             {
@@ -216,9 +217,49 @@ public class ViewGenerator
     <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
 </div>");
                 }
+                else if (field.EnumRenderAsCheckbox)
+                {
+                    // Checkboxes (multiple select)
+                    sb.AppendLine($@"
+<div class=""checkbox-group-{field.Name}"">
+    <label class=""block text-sm font-bold text-slate-700 mb-1.5"">{field.Name}</label>
+    <div class=""flex flex-wrap gap-4"">");
+
+                    if (!string.IsNullOrWhiteSpace(field.EnumValues))
+                    {
+                        var items = field.EnumValues.Split(',', System.StringSplitOptions.TrimEntries | System.StringSplitOptions.RemoveEmptyEntries)
+                            .Select(v => (code: v.Trim().Replace(' ', '_').ToUpperInvariant(), text: v.Trim()))
+                            .ToList();
+
+                        sb.AppendLine($@"        @{{ var _opts = new[] {{");
+                        for (int i = 0; i < items.Count; i++)
+                        {
+                            var comma = i < items.Count - 1 ? "," : "";
+                            sb.AppendLine($"            (\"{items[i].code}\", \"{items[i].text}\"){comma}");
+                        }
+                        sb.AppendLine($@"        }}; }}
+        @foreach (var opt in _opts)
+        {{
+            var _checked = Model.{field.Name} != null && Model.{field.Name}.Split(',').Contains(opt.Item1);
+            <label class=""inline-flex items-center gap-2 cursor-pointer"">
+                <input type=""checkbox"" value=""@opt.Item1""
+                       onchange=""updateCheckboxHidden(this, '{field.Name}')""
+                       class=""w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500""
+                       @(_checked ? ""checked"" : """") />
+                <span class=""text-sm text-slate-700"">@opt.Item2</span>
+            </label>
+        }}");
+                    }
+
+                    sb.AppendLine($@"
+    </div>
+    <input type=""hidden"" asp-for=""{field.Name}"" id=""hf_{field.Name}"" />
+    <span asp-validation-for=""{field.Name}"" class=""text-xs text-rose-500 mt-1""></span>
+</div>");
+                }
                 else
                 {
-                    // Hardcoded options → radio buttons
+                    // Radio buttons (single select)
                     sb.AppendLine($@"
 <div>
     <label class=""block text-sm font-bold text-slate-700 mb-1.5"">{field.Name}</label>
@@ -324,6 +365,25 @@ public class ViewGenerator
 <script>
 function updateFileLabel(input) {
     console.log(input.files.length);
+}
+</script>";
+    }
+
+    private static string BuildCheckboxScripts(bool hasCheckbox)
+    {
+        if (!hasCheckbox) return string.Empty;
+
+        return @"
+<script>
+function updateCheckboxHidden(checkbox, fieldName) {
+    var div = checkbox.closest('div[class^=""checkbox-group-""]');
+    if (!div) div = checkbox.closest('div');
+    var hidden = document.getElementById('hf_' + fieldName);
+    if (!hidden) return;
+    var checked = div.querySelectorAll('input[type=""checkbox""]:checked');
+    var values = [];
+    checked.forEach(function(cb) { values.push(cb.value); });
+    hidden.value = values.join(',');
 }
 </script>";
     }

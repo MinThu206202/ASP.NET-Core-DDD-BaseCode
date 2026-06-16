@@ -47,7 +47,8 @@ public class ModuleGeneratorApiController : ControllerBase
                 MinValue = x.MinValue,
                 MaxValue = x.MaxValue,
                 EnumValues = x.EnumValues,
-                UseCommonTable = x.UseCommonTable
+                UseCommonTable = x.UseCommonTable,
+                EnumRenderAsCheckbox = x.EnumRenderAsCheckbox
             })
             .ToList();
 
