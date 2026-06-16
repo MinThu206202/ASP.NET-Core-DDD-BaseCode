@@ -17,4 +17,5 @@ public class ModuleFieldViewModel
 
     public bool IsRelation { get; set; }
     public string? RelatedEntityName { get; set; }
+    public bool IsPivot { get; set; }
 }

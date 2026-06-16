@@ -108,7 +108,7 @@ public class WebGenerator
                 sb.AppendLine(
                     $"    public string {name} {{ get; set; }} = string.Empty;");
             }
-            else if (field.IsRelation)
+            else if (field.IsRelation && !field.IsPivot)
             {
                 sb.AppendLine(
                     $"    [Required(ErrorMessage = \"{name} is required\")]");
@@ -118,6 +118,15 @@ public class WebGenerator
                     $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
                 sb.AppendLine(
                     $"    public string {name}Name {{ get; set; }} = string.Empty;");
+            }
+            else if (field.IsPivot)
+            {
+                sb.AppendLine(
+                    $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public List<Guid> Selected{name}Ids {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public string {name}Display {{ get; set; }} = string.Empty;");
             }
             else
             {

@@ -31,4 +31,5 @@ public class InfrastructureGenerator
 
         _files.WriteFile(Path.Combine(repositoryFolder, $"{name}Repository.cs"), repositoryContent);
     }
+
 }

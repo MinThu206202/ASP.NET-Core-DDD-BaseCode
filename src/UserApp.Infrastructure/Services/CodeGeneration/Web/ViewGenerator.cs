@@ -22,6 +22,8 @@ public class ViewGenerator
         var viewFolder = Path.Combine(_paths.SrcRoot, "UserApp.Web", "Views", name);
         _files.EnsureDirectory(viewFolder);
 
+        var hasPivot = fields.Any(f => f.IsPivot);
+
         var indexContent = _templates.RenderFile(
             new[] { "Web", "Templates", "Index.tpl" },
             new Dictionary<string, string>
@@ -36,7 +38,8 @@ public class ViewGenerator
             new Dictionary<string, string>
             {
                 ["Name"] = name,
-                ["Inputs"] = BuildFormInputs(fields, hasImage)
+                ["Inputs"] = BuildFormInputs(fields, hasImage),
+                ["Scripts"] = BuildPivotScripts(hasPivot)
             });
 
         var editContent = _templates.RenderFile(
@@ -46,7 +49,7 @@ public class ViewGenerator
                 ["Name"] = name,
                 ["CurrentImages"] = BuildCurrentImages(hasImage),
                 ["Inputs"] = BuildFormInputs(fields, hasImage),
-                ["Scripts"] = BuildMediaScripts(hasImage)
+                ["Scripts"] = BuildMediaScripts(hasImage) + BuildPivotScripts(hasPivot)
             });
 
         _files.WriteFile(Path.Combine(viewFolder, "Index.cshtml"), indexContent);
@@ -99,11 +102,13 @@ public class ViewGenerator
             if (field.Name.Equals("Name", StringComparison.OrdinalIgnoreCase))
                 continue;
 
-            var displayValue = field.IsRelation
-                ? $"@p.{field.Name}Name"
-                : field.UseCommonTable
+            var displayValue = field.IsPivot
+                ? $"@(!string.IsNullOrEmpty(p.{field.Name}Display) ? p.{field.Name}Display : \"None\")"
+                : field.IsRelation
                     ? $"@p.{field.Name}Name"
-                    : $"@p.{field.Name}";
+                    : field.UseCommonTable
+                        ? $"@p.{field.Name}Name"
+                        : $"@p.{field.Name}";
 
             sb.AppendLine($@"<td class=""px-6 py-4 text-slate-600"">{displayValue}</td>");
         }
@@ -140,11 +145,41 @@ public class ViewGenerator
                 continue;
 
             // =========================
-            // RELATION → DROPDOWN (only when type is "relation")
+            // RELATION → DROPDOWN or PIVOT CHECKBOXES
             // =========================
             if (field.IsRelation && field.Type.Equals("relation", StringComparison.OrdinalIgnoreCase))
             {
-                sb.AppendLine($@"
+                if (field.IsPivot)
+                {
+                    sb.AppendLine($@"
+<div>
+    <label class=""block text-sm font-bold text-slate-700 mb-1.5"">{field.Name}</label>
+    <div class=""relative"">
+        <button type=""button"" onclick=""togglePivotDropdown(this)"" data-label=""{field.Name}""
+                class=""w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-left text-sm text-slate-500 flex items-center justify-between gap-2"">
+            <span class=""truncate"">Select {field.Name}</span>
+            <svg class=""w-4 h-4 shrink-0 text-slate-400"" fill=""none"" stroke=""currentColor"" viewBox=""0 0 24 24"">
+                <path stroke-linecap=""round"" stroke-linejoin=""round"" stroke-width=""2"" d=""M19 9l-7 7-7-7""/>
+            </svg>
+        </button>
+        <div class=""hidden absolute z-10 mt-1 w-full bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto"">
+            @foreach (var option in Model.{field.Name}Options)
+            {{
+                <label class=""flex items-center px-3 py-2 hover:bg-slate-50 cursor-pointer"">
+                    <input type=""checkbox"" name=""Selected{field.Name}Ids"" value=""@option.Value""
+                           class=""w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500""
+                           onchange=""updatePivotLabel(this)""
+                           @(Model.Selected{field.Name}Ids.Contains(Guid.Parse(option.Value)) ? ""checked"" : """") />
+                    <span class=""ml-2.5 text-sm text-slate-700"">@option.Text</span>
+                </label>
+            }}
+        </div>
+    </div>
+</div>");
+                }
+                else
+                {
+                    sb.AppendLine($@"
 <div>
     <label asp-for=""{field.Name}Id"" class=""block text-sm font-bold text-slate-700 mb-1.5"">
         {field.Name}
@@ -157,6 +192,7 @@ public class ViewGenerator
 
     <span asp-validation-for=""{field.Name}Id"" class=""text-xs text-rose-500 mt-1""></span>
 </div>");
+                }
             }
             // =========================
             // ENUM FIELD
@@ -289,6 +325,48 @@ public class ViewGenerator
 function updateFileLabel(input) {
     console.log(input.files.length);
 }
+</script>";
+    }
+
+    private static string BuildPivotScripts(bool hasPivot)
+    {
+        if (!hasPivot) return string.Empty;
+
+        return @"
+<script>
+function togglePivotDropdown(btn) {
+    var panel = btn.nextElementSibling;
+    var isHidden = panel.classList.contains('hidden');
+    document.querySelectorAll('.relative > div.absolute.z-10').forEach(function(p) {
+        if (p !== panel) p.classList.add('hidden');
+    });
+    panel.classList.toggle('hidden', !isHidden);
+}
+
+function updatePivotLabel(checkbox) {
+    var container = checkbox.closest('.relative');
+    var btn = container.querySelector('button');
+    var checked = container.querySelectorAll('input:checked');
+    var label = btn.querySelector('span');
+    label.textContent = checked.length > 0 ? checked.length + ' selected' : 'Select ' + btn.getAttribute('data-label');
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('.relative')) {
+        document.querySelectorAll('.relative > div.absolute.z-10').forEach(function(p) {
+            p.classList.add('hidden');
+        });
+    }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.relative').forEach(function(container) {
+        var btn = container.querySelector('button');
+        var checked = container.querySelectorAll('input:checked');
+        var label = btn.querySelector('span');
+        label.textContent = checked.length > 0 ? checked.length + ' selected' : 'Select ' + btn.getAttribute('data-label');
+    });
+});
 </script>";
     }
 }

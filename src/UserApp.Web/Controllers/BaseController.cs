@@ -2,12 +2,14 @@ using System.Reflection;
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using UserApp.Application.Common;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Application.Common.Media;
 using UserApp.Application.CommonTables.Interfaces;
 using UserApp.Domain.CommonTables;
+using UserApp.Infrastructure.Persistence;
 using UserApp.Web.Common;
 using UserApp.Web.ViewModels;
 using System.Security.Claims;
@@ -136,11 +138,194 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             var fieldName = prop.Name.EndsWith("Options") ? prop.Name[..^"Options".Length] : null;
             if (string.IsNullOrEmpty(fieldName)) continue;
 
+            // Pivot: Selected{Name}Ids exists → multi-select
+            var selectedProp = vmType.GetProperty($"Selected{fieldName}Ids");
+            if (selectedProp != null && selectedProp.PropertyType == typeof(List<Guid>))
+            {
+                var options = await LoadEntityLookupOptions(fieldName);
+                prop.SetValue(vm, options);
+                continue;
+            }
+
+            // Single relation: {Name}Id exists → dropdown
             var idProp = vmType.GetProperty($"{fieldName}Id");
             if (idProp == null || idProp.PropertyType != typeof(Guid)) continue;
 
-            var options = await LoadEntityLookupOptions(fieldName);
-            prop.SetValue(vm, options);
+            var entityOptions = await LoadEntityLookupOptions(fieldName);
+            prop.SetValue(vm, entityOptions);
+        }
+    }
+
+    private async Task PopulatePivotSelectedIds(object vm, Guid entityId)
+    {
+        var vmType = vm.GetType();
+        var sp = HttpContext?.RequestServices;
+        if (sp == null) return;
+
+        var entityName = typeof(TEntity).Name;
+
+        foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(List<Guid>) || !prop.CanWrite) continue;
+            if (!prop.Name.StartsWith("Selected") || !prop.Name.EndsWith("Ids")) continue;
+
+            var fieldName = prop.Name["Selected".Length..^"Ids".Length];
+            if (string.IsNullOrEmpty(fieldName)) continue;
+
+            var selectedIds = await LoadPivotRelatedIds(entityName, fieldName, entityId);
+            prop.SetValue(vm, selectedIds);
+        }
+    }
+
+    private async Task<List<string>> LoadEntityNamesByIds(string entityName, List<Guid> ids)
+    {
+        try
+        {
+            if (ids.Count == 0) return [];
+
+            var sp = HttpContext?.RequestServices;
+            if (sp == null) return [];
+
+            var entityType = Type.GetType($"UserApp.Domain.{entityName}s.{entityName}, UserApp.Domain");
+            if (entityType == null) return [];
+
+            var db = sp.GetRequiredService<AppDbContext>();
+
+            var setMethod = typeof(DbContext).GetMethod("Set", Type.EmptyTypes)!
+                .MakeGenericMethod(entityType);
+            var dbSet = setMethod.Invoke(db, null);
+
+            var toList = typeof(Enumerable).GetMethod("ToList")!
+                .MakeGenericMethod(entityType);
+            var all = (IEnumerable<object>)toList.Invoke(null, [dbSet])!;
+
+            var idProp = entityType.GetProperty("Id");
+            var nameProp = entityType.GetProperty("Name");
+            if (idProp == null || nameProp == null) return [];
+
+            return all
+                .Where(e => ids.Contains((Guid)idProp.GetValue(e)!))
+                .Select(e => nameProp.GetValue(e)?.ToString() ?? "")
+                .Where(n => !string.IsNullOrEmpty(n))
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
+    }
+
+    private async Task<List<Guid>> LoadPivotRelatedIds(string moduleName, string relatedName, Guid entityId)
+    {
+        try
+        {
+            var db = HttpContext?.RequestServices.GetService<AppDbContext>();
+            if (db == null) return new();
+
+            var pivotName = $"{moduleName}{relatedName}";
+            var pivotType = Type.GetType($"UserApp.Domain.{pivotName}s.{pivotName}, UserApp.Domain");
+            if (pivotType == null) return new();
+
+            var setMethod = typeof(DbContext).GetMethod("Set", Type.EmptyTypes)!
+                .MakeGenericMethod(pivotType);
+            var dbSet = setMethod.Invoke(db, null);
+
+            var toList = typeof(Enumerable).GetMethod("ToList")!
+                .MakeGenericMethod(pivotType);
+            var all = (IEnumerable<object>)toList.Invoke(null, [dbSet])!;
+
+            var parentIdProp = pivotType.GetProperty($"{moduleName}_id");
+            var relatedIdProp = pivotType.GetProperty($"{relatedName}_id");
+            if (parentIdProp == null || relatedIdProp == null) return new();
+
+            return all
+                .Where(e => (Guid)parentIdProp.GetValue(e)! == entityId)
+                .Select(e => (Guid)relatedIdProp.GetValue(e)!)
+                .ToList();
+        }
+        catch
+        {
+            return new();
+        }
+    }
+
+    private async Task SavePivotData<T>(T entity, TViewModel vm) where T : class
+    {
+        var sp = HttpContext?.RequestServices;
+        if (sp == null) return;
+
+        var entityType = typeof(T);
+        var idPropEntity = entityType.GetProperty("Id");
+        if (idPropEntity == null) return;
+        var entityId = (Guid)idPropEntity.GetValue(entity)!;
+
+        var entityName = typeof(TEntity).Name;
+        var vmType = typeof(TViewModel);
+
+        foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        {
+            if (prop.PropertyType != typeof(List<Guid>) || !prop.CanRead) continue;
+            if (!prop.Name.StartsWith("Selected") || !prop.Name.EndsWith("Ids")) continue;
+
+            var fieldName = prop.Name["Selected".Length..^"Ids".Length];
+            if (string.IsNullOrEmpty(fieldName)) continue;
+
+            var selectedIds = (List<Guid>)prop.GetValue(vm)!;
+            await SyncPivotRecords(entityName, fieldName, entityId, selectedIds);
+        }
+    }
+
+    private async Task SyncPivotRecords(string moduleName, string relatedName, Guid entityId, List<Guid> selectedIds)
+    {
+        try
+        {
+            var db = HttpContext?.RequestServices.GetService<AppDbContext>();
+            if (db == null) return;
+
+            var pivotName = $"{moduleName}{relatedName}";
+            var pivotType = Type.GetType($"UserApp.Domain.{pivotName}s.{pivotName}, UserApp.Domain");
+            if (pivotType == null) return;
+
+            var parentIdProp = pivotType.GetProperty($"{moduleName}_id");
+            var relatedIdProp = pivotType.GetProperty($"{relatedName}_id");
+            if (parentIdProp == null || relatedIdProp == null) return;
+
+            var setMethod = typeof(DbContext).GetMethod("Set", Type.EmptyTypes)!
+                .MakeGenericMethod(pivotType);
+            var dbSet = setMethod.Invoke(db, null);
+
+            var toList = typeof(Enumerable).GetMethod("ToList")!
+                .MakeGenericMethod(pivotType);
+            var all = (IEnumerable<object>)toList.Invoke(null, [dbSet])!;
+
+            var existing = all
+                .Where(e => (Guid)parentIdProp.GetValue(e)! == entityId)
+                .ToList();
+
+            var toRemove = existing
+                .Where(e => !selectedIds.Contains((Guid)relatedIdProp.GetValue(e)!))
+                .ToList();
+
+            var toAdd = selectedIds
+                .Where(id => !existing.Any(e => (Guid)relatedIdProp.GetValue(e)! == id))
+                .ToList();
+
+            foreach (var record in toRemove)
+                db.Remove(record);
+
+            foreach (var addId in toAdd)
+            {
+                var record = Activator.CreateInstance(pivotType)!;
+                parentIdProp.SetValue(record, entityId);
+                relatedIdProp.SetValue(record, addId);
+                db.Add(record);
+            }
+
+            await db.SaveChangesAsync();
+        }
+        catch
+        {
+            // Silently handle pivot save errors
         }
     }
 
@@ -243,6 +428,38 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         }
     }
 
+    private async Task ResolvePivotSelectedIds(List<TViewModel> items)
+    {
+        var vmType = typeof(TViewModel);
+        var entityName = typeof(TEntity).Name;
+
+        foreach (var item in items)
+        {
+            foreach (var prop in vmType.GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (prop.PropertyType != typeof(List<Guid>) || !prop.CanWrite) continue;
+                if (!prop.Name.StartsWith("Selected") || !prop.Name.EndsWith("Ids")) continue;
+
+                var fieldName = prop.Name["Selected".Length..^"Ids".Length];
+                if (string.IsNullOrEmpty(fieldName)) continue;
+
+                var idProp = vmType.GetProperty("Id");
+                var idValue = idProp?.GetValue(item);
+                if (idValue == null || (Guid)idValue == Guid.Empty) continue;
+
+                var selectedIds = await LoadPivotRelatedIds(entityName, fieldName, (Guid)idValue);
+                prop.SetValue(item, selectedIds);
+
+                var displayProp = vmType.GetProperty($"{fieldName}Display");
+                if (displayProp != null && displayProp.PropertyType == typeof(string) && displayProp.CanWrite)
+                {
+                    var names = await LoadEntityNamesByIds(fieldName, selectedIds);
+                    displayProp.SetValue(item, string.Join(", ", names));
+                }
+            }
+        }
+    }
+
     public virtual async Task<IActionResult> Index(int page = 1, int size = 10)
     {
         var data = await _service.ListAsync((page - 1) * size, size);
@@ -257,6 +474,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
         await ResolveLookupDisplayNames(items);
         await ResolveRelationDisplayNames(items);
+        await ResolvePivotSelectedIds(items);
 
         return View("Index", new ListViewModel<TViewModel>
         {
@@ -276,6 +494,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         await LoadImageUrls(vm, id);
         await ResolveLookupDisplayNames([vm]);
         await ResolveRelationDisplayNames([vm]);
+        await ResolvePivotSelectedIds([vm]);
 
         return View("Details", vm);
     }
@@ -304,6 +523,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         try
         {
             await _service.AddAsync(entity, files);
+            await SavePivotData(entity, vm);
         }
         catch (InvalidOperationException ex)
         {
@@ -326,6 +546,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         await LoadImageUrls(vm, id);
         await PopulateLookupOptions(vm);
         await PopulateRelationOptions(vm);
+        await PopulatePivotSelectedIds(vm, id);
 
         return View("Edit", vm);
     }
@@ -375,6 +596,7 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
             }
 
             await _service.UpdateAsync(entity, files);
+            await SavePivotData(entity, vm);
         }
         catch (InvalidOperationException ex)
         {
