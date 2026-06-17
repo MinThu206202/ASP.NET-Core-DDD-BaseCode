@@ -12,6 +12,7 @@ using UserApp.Domain.Payments;
 using UserApp.Domain.CommonTables;
 using UserApp.Domain.Products;
 using UserApp.Domain.Humans;
+using UserApp.Domain.Messengers;
 
 
 namespace UserApp.Infrastructure.Persistence;
@@ -44,6 +45,7 @@ public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<CommonTable> CommonTables => Set<CommonTable>();
     public DbSet<Product> Products => Set<Product>();
 public DbSet<Human> Humans => Set<Human>();
+public DbSet<Messenger> Messengers => Set<Messenger>();
     // <AUTO-DBSETS-END>
 
 

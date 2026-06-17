@@ -156,6 +156,7 @@ public class AuthApiController : ControllerBase
 
     // ---------------- LOGOUT ----------------
     [HttpPost("logout")]
+    [AllowAnonymous]
     public async Task<IActionResult> Logout([FromBody] string refreshToken)
     {
         await _authService.RevokeRefreshTokenAsync(refreshToken);

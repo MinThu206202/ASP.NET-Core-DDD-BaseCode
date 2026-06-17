@@ -16,6 +16,7 @@ using UserApp.Web.ViewModels.CommonTables;
 using UserApp.Domain.Products;
 using UserApp.Web.ViewModels.Products;
 using UserApp.Domain.Humans;
+using UserApp.Domain.Messengers;
 
 
 namespace UserApp.Web.Mapping;
@@ -62,6 +63,8 @@ CreateMap<Payment, PaymentViewModel>();
 CreateMap<PaymentViewModel, Payment>();
 CreateMap<Human, HumanViewModel>();
 CreateMap<HumanViewModel, Human>();
+CreateMap<Messenger, MessengerViewModel>();
+CreateMap<MessengerViewModel, Messenger>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();
