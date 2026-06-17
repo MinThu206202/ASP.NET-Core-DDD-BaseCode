@@ -24,387 +24,1076 @@
 </script>
 
 <style>
-    /* Premium micro-interactions and transitions */
-    .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .animate-fadeIn { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    
-    .custom-scrollbar::-webkit-scrollbar { height: 6px; }
-    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
-    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    /* ── Animations ── */
+    .fade-in  { animation: fadeIn  0.4s cubic-bezier(0.16,1,0.3,1) both; }
+    .slide-up { animation: slideUp 0.5s cubic-bezier(0.16,1,0.3,1) both; }
+    .animate-fadeIn { animation: fadeIn 0.3s cubic-bezier(0.16,1,0.3,1) both; }
+    @@keyframes fadeIn  { from{opacity:0}              to{opacity:1} }
+    @@keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── Sidebar slide ── */
+    @@keyframes sidebarIn  { from{transform:translateX(-100%);opacity:0} to{transform:translateX(0);opacity:1} }
+    @@keyframes sidebarOut { from{transform:translateX(0);opacity:1}     to{transform:translateX(-100%);opacity:0} }
+    .sidebar-enter { animation: sidebarIn  0.32s cubic-bezier(0.16,1,0.3,1) both; }
+    .sidebar-leave { animation: sidebarOut 0.24s cubic-bezier(0.4,0,1,1) both; }
+
+    /* ── Scrollbars ── */
+    .custom-scrollbar::-webkit-scrollbar        { height:6px; width:4px; }
+    .custom-scrollbar::-webkit-scrollbar-track  { background:transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb  { background:#cbd5e1; border-radius:9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background:#94a3b8; }
+
+    /* ── Sidebar tree ── */
+    .sidebar-folder-children { overflow:hidden; transition:max-height 0.28s cubic-bezier(0.16,1,0.3,1), opacity 0.2s; }
+    .sidebar-folder-children.collapsed { max-height:0!important; opacity:0; pointer-events:none; }
+
+    /* ── Module active ── */
+    .module-item.active { background:#eef2ff; }
+    .module-item.active .module-name { color:#4338ca; font-weight:600; }
+
+    /* ── Folder rename input ── */
+    .folder-name-input {
+        background:transparent; border:none; outline:none;
+        font-size:0.75rem; font-weight:600; color:#334155;
+        width:100%; min-width:0;
+    }
+    .folder-name-input:focus { color:#4338ca; }
+
+    /* ── Drag-over highlight ── */
+    .drop-zone.drag-over { outline:2px dashed #818cf8; outline-offset:2px; background:#f5f3ff40; border-radius:6px; transition:all 0.15s ease; }
+    .module-item.drag-over {
+        outline:2px solid #6366f1;
+        outline-offset:-1px;
+        background:#eef2ff !important;
+        box-shadow:0 0 0 3px rgba(99,102,241,0.2), 0 4px 16px rgba(99,102,241,0.15);
+        transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
+    }
+    .module-item {
+        transition:transform 0.2s ease, box-shadow 0.2s ease, background 0.15s ease, outline 0.15s ease;
+        border-left:2px solid transparent;
+    }
+    .module-item:hover { border-left-color:#e2e8f0; }
+    .module-item.active { border-left-color:#6366f1; }
+    .module-item.dragging,
+    .folder-row.dragging {
+        opacity:0.4;
+        transform:scale(0.92) rotate(-1deg);
+        filter:grayscale(0.4);
+        box-shadow:0 8px 24px rgba(15,23,42,0.15);
+    }
+    .folder-row {
+        transition:transform 0.2s ease, box-shadow 0.2s ease, background 0.15s ease;
+    }
+    .folder-row.drag-over {
+        outline:2px solid #6366f1;
+        outline-offset:-1px;
+        background:#eef2ff !important;
+        box-shadow:0 0 0 3px rgba(99,102,241,0.2), 0 4px 16px rgba(99,102,241,0.15);
+        transition:all 0.2s cubic-bezier(0.16,1,0.3,1);
+    }
+
+    /* ── Tree indent lines ── */
+    .folder-group { position:relative; }
+    .sidebar-folder-children { position:relative; }
+    .sidebar-folder-children::before {
+        content:''; position:absolute; left:8px; top:0; bottom:16px;
+        width:1px; background:#e2e8f0;
+    }
+    .module-item::before {
+        content:''; position:absolute; left:-13px; top:50%;
+        width:9px; height:1px; background:#e2e8f0;
+    }
+
+    /* ── Layout shell ── */
+    #app-shell { display:flex; min-height:100vh; background:#f8fafc; }
+
+    /* ── Sidebar panel ── */
+    #sidebar-panel {
+        width:260px; min-width:260px; max-width:260px;
+        max-height:calc(80vh - 25px);
+        margin:16px 0 16px 16px;
+        background:#fff; border:1px solid #e2e8f0;
+        border-radius:16px;
+        display:flex; flex-direction:column;
+        transition:width 0.28s cubic-bezier(0.16,1,0.3,1),
+                   min-width 0.28s cubic-bezier(0.16,1,0.3,1),
+                   opacity 0.2s;
+        position:relative; overflow:hidden;
+    }
+    #sidebar-panel.closed {
+        display:none;
+    }
+
+    /* ── Main content ── */
+    #main-content { flex:1; min-width:0; transition:all 0.28s cubic-bezier(0.16,1,0.3,1); }
+
+    /* ── Context menu ── */
+    #ctx-menu {
+        position:fixed; z-index:200; background:#fff;
+        border:1px solid #e2e8f0; border-radius:10px;
+        box-shadow:0 8px 24px rgba(15,23,42,0.12); padding:4px;
+        min-width:160px; display:none;
+    }
+    #ctx-menu.visible { display:block; animation:fadeIn 0.15s both; }
+    .ctx-item {
+        display:flex; align-items:center; gap:8px;
+        padding:7px 12px; border-radius:7px; font-size:0.8125rem;
+        font-weight:500; color:#334155; cursor:pointer;
+        transition:background 0.1s;
+    }
+    .ctx-item:hover { background:#f1f5f9; }
+    .ctx-item.danger { color:#ef4444; }
+    .ctx-item.danger:hover { background:#fef2f2; }
+
+    /* ── Modal backdrop ── */
+    .modal-backdrop {
+        position:fixed; inset:0; background:rgba(15,23,42,0.35);
+        z-index:300; display:flex; align-items:center; justify-content:center;
+        animation:fadeIn 0.18s both;
+    }
+    .modal-backdrop.closed { display:none; }
+    .modal-card {
+        background:#fff; border-radius:16px; padding:28px;
+        min-width:320px; max-width:400px; width:90%;
+        box-shadow:0 20px 60px rgba(15,23,42,0.2);
+        animation:slideUp 0.28s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    /* ── Breadcrumb path ── */
+    #breadcrumb-bar span.bc-sep { color:#94a3b8; }
 </style>
 
-<div class="fade-in max-w-5xl mx-auto px-4 py-8 antialiased">
-    
-    <!-- Title Header Block -->
-    <div class="flex items-center gap-4 mb-8">
-        <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
-                <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-            </svg>
-        </div>
-        <div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Module Designer</h1>
-            <p class="text-base text-slate-500 mt-0.5">Configure model parameters and programmatically compile application components</p>
-        </div>
-    </div>
+<!-- ════════════════════════════════════════════ APP SHELL ════════════════════════════════════════════ -->
+<div id="app-shell">
 
-    <form method="post" class="space-y-6">
-        @Html.AntiForgeryToken()
+    <!-- ───────────── SIDEBAR ───────────── -->
+    <aside id="sidebar-panel" class="custom-scrollbar closed">
 
-        <!-- Global Settings Card -->
-        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 50ms;">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Global Settings</h2>
-            </div>
-            
-            <div class="p-6 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Module Name Field -->
-                    <div>
-                        <label asp-for="ModuleName" class="block text-sm font-semibold text-slate-700 mb-2">Module Name</label>
-                        <input asp-for="ModuleName" placeholder="e.g., ProductCatalog"
-                               class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200" />
-                    </div>
-
-                    <!-- Image Radio Buttons -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Image Attachments</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" data-value="true" class="img-btn selected flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-indigo-500 bg-indigo-50/40 text-indigo-700">
-                                <span class="w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0"></span>
-                                Include Image Support
-                            </button>
-                            <button type="button" data-value="false" class="img-btn flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-slate-200 bg-white text-slate-600 hover:border-slate-300">
-                                <span class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0"></span>
-                                No Images
-                            </button>
-                            <input type="hidden" asp-for="HasImage" id="HasImage" value="true" />
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Database Lifecycle Configurations -->
-                <div class="pt-2">
-                    <label class="block text-sm font-semibold text-slate-700 mb-3">Database Lifecycle Actions</label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        
-                        <!-- Toggle Card 1: Run Migration -->
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">Run Migration</div>
-                                <div class="text-sm text-slate-400 mt-0.5">Scaffold corresponding entity state context migrations.</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input asp-for="RunMigration" type="checkbox" value="true" class="sr-only peer" />
-                                <input type="hidden" name="RunMigration" value="false" />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-
-                        <!-- Toggle Card 2: Update Database -->
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">Update Database</div>
-                                <div class="text-sm text-slate-400 mt-0.5">Directly apply newly discovered pending migrations to target schema context.</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input asp-for="RunDbUpdate" type="checkbox" value="true" class="sr-only peer" />
-                                <input type="hidden" name="RunDbUpdate" value="false" />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-
-                    </div>
-
-                    <!-- Relation Section -->
-                    <div class="mt-4">
-                        <label class="block text-sm font-semibold text-slate-700 mb-3">Relation Configuration</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            <!-- Toggle Card: Add Relation -->
-                            <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                                <div class="pr-4">
-                                    <div class="text-base font-semibold text-slate-800">Add Relation</div>
-                                    <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer group">
-                                    <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
-                                    <input type="hidden" name="HasRelation" value="false" />
-                                    <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                                </label>
-                            </div>
-
-                            <!-- Related Table Card -->
-                            <div id="relationSelector" class="border border-slate-200/80 rounded-xl bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
-                                <div class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Related Table</div>
-                                <div class="text-xs text-slate-400 mb-3">Link this module to...</div>
-                                <select id="relTableSelect" onchange="onRelationSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-150">
-                                    <option value="">-- Select Table --</option>
-                                    @foreach (var t in Model.AvailableTables)
-                                    {
-                                        <option value="@t">@t</option>
-                                    }
-                                </select>
-                                <div id="deleteBehaviorRow" class="hidden mt-4">
-                                    <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Delete Behavior</div>
-                                    <div class="flex flex-wrap gap-4">
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="Cascade" checked
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">CASCADE</span>
-                                        </label>
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="Restrict"
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">RESTRICT</span>
-                                        </label>
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="SetNull"
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">SET NULL</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="pivotCard" class="hidden mt-4 opacity-50">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
-                                            <div class="text-xs text-slate-400 mt-0.5">Enable many-to-many relationship</div>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer group shrink-0">
-                                            <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled />
-                                            <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="relationFieldsContainer"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-        </div>
-
-        <!-- Schema Fields Setup Card -->
-        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 120ms;">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
-                    <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
-                        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                        </svg>
-                        Add Schema Field
-                    </button>
-                </div>
-            </div>
-            
-            <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse" id="fieldsTable">
-                    <thead>
-                        <tr class="border-b border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
-                            <th class="p-3.5 pl-6 w-[35%]">Field Name</th>
-                            <th class="p-3.5 w-[25%]">Data Type</th>
-                            <th class="p-3.5 w-[15%]">Length</th>
-                            <th class="p-3.5 text-center w-[15%]">Nullable</th>
-                            <th class="p-3.5 pr-6 w-[10%] text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr id="mgEmptyRow">
-                            <td colspan="5" class="p-12 text-center text-slate-400">
-                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
-                                    <div class="p-3 bg-slate-50 rounded-xl text-slate-400 border border-slate-100 mb-3">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                        </svg>
-                                    </div>
-                                    <p class="text-base font-semibold text-slate-800">No layout components defined</p>
-                                    <p class="text-sm text-slate-400 mt-1">Initialize compilation by tracking structural layout attributes mapping directly to target DB states.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- Submit Context Actions -->
-        <div class="slide-up flex justify-end pt-2" style="animation-delay: 180ms;">
-            <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 text-base font-semibold text-white bg-indigo-600 border border-indigo-700/50 rounded-xl shadow-sm hover:bg-indigo-700 active:scale-[0.98] hover:shadow-md transition-all duration-200">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+        <!-- Sidebar Header -->
+        <div class="flex items-center gap-2 px-3 py-2.5 border-b border-slate-100 shrink-0">
+            <div class="w-6 h-6 rounded-md bg-indigo-600 flex items-center justify-center shrink-0">
+                <svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/>
                 </svg>
-                Generate Module Architecture
+            </div>
+            <span class="text-xs font-bold text-slate-700 tracking-tight uppercase">Explorer</span>
+        </div>
+
+        <!-- Quick Actions -->
+        <div class="px-2 pt-2 pb-1 flex gap-1">
+            <button onclick="promptNewFolder(null)" class="flex items-center gap-1 px-2 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50 rounded-md transition-all">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Folder
             </button>
         </div>
 
-    </form>
+        <!-- Search -->
+        <div class="px-2 pb-1.5">
+            <div class="relative">
+                <svg class="w-3 h-3 absolute left-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 115 11a6 6 0 0112 0z"/>
+                </svg>
+                <input id="sidebar-search" oninput="filterSidebar(this.value)" type="text" placeholder="Search…" class="w-full pl-7 pr-2 py-1 text-xs font-medium border border-slate-200 rounded-md bg-slate-50 text-slate-600 placeholder-slate-400 outline-none focus:border-indigo-400 focus:ring-2 focus:ring-indigo-400/10 transition-all" />
+            </div>
+        </div>
+
+        <!-- Tree -->
+        <div id="sidebar-tree" class="flex-1 overflow-y-auto custom-scrollbar px-2 pb-4">
+            <!-- Dynamically rendered by JS -->
+        </div>
+
+        <!-- Footer stats -->
+        <div class="px-3 py-2 border-t border-slate-100 bg-slate-50/50 shrink-0">
+            <div class="flex items-center justify-between">
+                <span class="text-xs text-slate-400 font-medium" id="sidebar-stats">0 modules · 0 folders</span>
+                <button onclick="expandAll()" class="text-xs text-indigo-500 hover:text-indigo-700 font-semibold transition-colors" id="expand-all-btn">Expand all</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- ───────────── MAIN CONTENT ───────────── -->
+    <main id="main-content" class="fade-in px-6 py-8 antialiased overflow-y-auto">
+        <div class="max-w-5xl mx-auto">
+
+            <!-- Breadcrumb -->
+            <div id="breadcrumb-bar" class="flex items-center gap-1.5 text-xs font-medium text-slate-400 mb-5 min-h-[18px]">
+                <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/>
+                </svg>
+                <span class="bc-sep">/</span>
+                <span class="text-slate-500 font-semibold">Module Designer</span>
+            </div>
+
+            <!-- Title Header Block -->
+            <div class="flex items-center gap-4 mb-8">
+                <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Module Designer</h1>
+                    <p class="text-base text-slate-500 mt-0.5">Configure model parameters and programmatically compile application components</p>
+                </div>
+            </div>
+
+            <form method="post" class="space-y-6">
+                @Html.AntiForgeryToken()
+
+                <!-- Global Settings Card -->
+                <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay:50ms">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
+                        <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Global Settings</h2>
+                    </div>
+                    <div class="p-6 space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Module Name -->
+                            <div>
+                                <label asp-for="ModuleName" class="block text-sm font-semibold text-slate-700 mb-2">Module Name</label>
+                                <input asp-for="ModuleName" id="ModuleNameInput" placeholder="e.g., ProductCatalog"
+                                       oninput="syncModuleNameToBreadcrumb(this.value)"
+                                       class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200" />
+                                <label class="relative inline-flex items-center cursor-pointer mt-2 group" title="Toggle sidebar">
+                                    <input type="checkbox" id="sidebarToggleSwitch" onchange="toggleSidebar()" class="sr-only peer" />
+                                    <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    <span class="ml-2.5 text-sm font-medium text-slate-500">Show Sidebar</span>
+                                </label>
+                            </div>
+                            <!-- Image Attachments -->
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Image Attachments</label>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <button type="button" data-value="true" class="img-btn selected flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-indigo-500 bg-indigo-50/40 text-indigo-700">
+                                        <span class="w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0"></span>
+                                        Include Image Support
+                                    </button>
+                                    <button type="button" data-value="false" class="img-btn flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-slate-200 bg-white text-slate-600 hover:border-slate-300">
+                                        <span class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0"></span>
+                                        No Images
+                                    </button>
+                                    <input type="hidden" asp-for="HasImage" id="HasImage" value="true" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- DB Lifecycle -->
+                        <div class="pt-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-3">Database Lifecycle Actions</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <!-- Run Migration -->
+                                <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                                    <div class="pr-4">
+                                        <div class="text-base font-semibold text-slate-800">Run Migration</div>
+                                        <div class="text-sm text-slate-400 mt-0.5">Scaffold corresponding entity state context migrations.</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input asp-for="RunMigration" type="checkbox" value="true" class="sr-only peer" />
+                                        <input type="hidden" name="RunMigration" value="false" />
+                                        <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                                <!-- Update Database -->
+                                <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                                    <div class="pr-4">
+                                        <div class="text-base font-semibold text-slate-800">Update Database</div>
+                                        <div class="text-sm text-slate-400 mt-0.5">Directly apply newly discovered pending migrations to target schema context.</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer">
+                                        <input asp-for="RunDbUpdate" type="checkbox" value="true" class="sr-only peer" />
+                                        <input type="hidden" name="RunDbUpdate" value="false" />
+                                        <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Relation Section -->
+                            <div class="mt-4">
+                                <label class="block text-sm font-semibold text-slate-700 mb-3">Relation Configuration</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                                    <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                                        <div class="pr-4">
+                                            <div class="text-base font-semibold text-slate-800">Add Relation</div>
+                                            <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer">
+                                            <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
+                                            <input type="hidden" name="HasRelation" value="false" />
+                                            <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                        </label>
+                                    </div>
+                                    <div id="relationSelector" class="border border-slate-200/80 rounded-xl bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
+                                        <div class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Related Table</div>
+                                        <div class="text-xs text-slate-400 mb-3">Link this module to...</div>
+                                        <select id="relTableSelect" onchange="onRelationSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all">
+                                            <option value="">-- Select Table --</option>
+                                            @foreach (var t in Model.AvailableTables)
+                                            {
+                                                <option value="@t">@t</option>
+                                            }
+                                        </select>
+                                        <div id="deleteBehaviorRow" class="hidden mt-4">
+                                            <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Delete Behavior</div>
+                                            <div class="flex flex-wrap gap-4">
+                                                <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="deleteBehavior" value="Cascade" checked onchange="onDeleteBehaviorChange(this)" class="text-indigo-600"/><span class="text-sm text-slate-700">CASCADE</span></label>
+                                                <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="deleteBehavior" value="Restrict" onchange="onDeleteBehaviorChange(this)" class="text-indigo-600"/><span class="text-sm text-slate-700">RESTRICT</span></label>
+                                                <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="deleteBehavior" value="SetNull" onchange="onDeleteBehaviorChange(this)" class="text-indigo-600"/><span class="text-sm text-slate-700">SET NULL</span></label>
+                                            </div>
+                                        </div>
+                                        <div id="pivotCard" class="hidden mt-4 opacity-50">
+                                            <div class="flex items-center justify-between">
+                                                <div>
+                                                    <div class="text-sm font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
+                                                    <div class="text-xs text-slate-400 mt-0.5">Enable many-to-many relationship</div>
+                                                </div>
+                                                <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                                    <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled/>
+                                                    <div class="w-10 h-6 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                                </label>
+                                            </div>
+                                        </div>
+                                        <div id="relationFieldsContainer"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schema Fields -->
+                <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay:120ms">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
+                        <div class="flex items-center gap-3">
+                            <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
+                            <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all">
+                                <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                Add Schema Field
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full border-collapse" id="fieldsTable">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
+                                    <th class="p-3.5 pl-6 w-[35%]">Field Name</th>
+                                    <th class="p-3.5 w-[25%]">Data Type</th>
+                                    <th class="p-3.5 w-[15%]">Length</th>
+                                    <th class="p-3.5 text-center w-[15%]">Nullable</th>
+                                    <th class="p-3.5 pr-6 w-[10%] text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr id="mgEmptyRow">
+                                    <td colspan="5" class="p-12 text-center text-slate-400">
+                                        <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
+                                            <div class="p-3 bg-slate-50 rounded-xl text-slate-400 border border-slate-100 mb-3">
+                                                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                                                </svg>
+                                            </div>
+                                            <p class="text-base font-semibold text-slate-800">No layout components defined</p>
+                                            <p class="text-sm text-slate-400 mt-1">Initialize compilation by tracking structural layout attributes mapping directly to target DB states.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Submit -->
+                <div class="slide-up flex items-center justify-between pt-2" style="animation-delay:180ms">
+                    <!-- Save to sidebar quick action -->
+                    <button type="button" onclick="saveCurrentModuleToSidebar()" class="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-indigo-300 hover:text-indigo-600 active:scale-[0.98] transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        Save to Explorer
+                    </button>
+                    <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 text-base font-semibold text-white bg-indigo-600 border border-indigo-700/50 rounded-xl shadow-sm hover:bg-indigo-700 active:scale-[0.98] hover:shadow-md transition-all">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Generate Module Architecture
+                    </button>
+                </div>
+            </form>
+        </div>
+    </main>
 </div>
 
-<script>
-    var index = 0;
-    var availableTables = @Html.Raw(tablesJson);
+<!-- ── Context Menu ── -->
+<div id="ctx-menu">
+    <div class="ctx-item" id="ctx-add-module"   onclick="ctxAction('add-module')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Add Module Here
+    </div>
+    <div class="ctx-item" id="ctx-new-folder"   onclick="ctxAction('new-folder')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+        New Sub-Folder
+    </div>
+    <div class="ctx-item" id="ctx-rename"       onclick="ctxAction('rename')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-7-7l7 7"/></svg>
+        Rename
+    </div>
+    <div class="border-t border-slate-100 my-1"></div>
+    <div class="ctx-item danger" id="ctx-delete" onclick="ctxAction('delete')">
+        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+        Delete
+    </div>
+</div>
 
-    // Image toggle - click any .img-btn
-    document.addEventListener('click', function(e) {
-        var btn = e.target.closest('.img-btn');
-        if (!btn) return;
-        document.querySelectorAll('.img-btn').forEach(function(b) {
-            b.classList.remove('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
-            b.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
-            b.querySelector('span').className = 'w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0';
+<!-- ── Modal ── -->
+<div id="modal-backdrop" class="modal-backdrop closed" onclick="closeModal(event)">
+    <div class="modal-card" onclick="event.stopPropagation()">
+        <h3 class="text-base font-bold text-slate-800 mb-1" id="modal-title">New Folder</h3>
+        <p class="text-sm text-slate-400 mb-4" id="modal-desc">Enter a name for the new folder.</p>
+        <input id="modal-input" type="text" placeholder="e.g., Core Modules"
+               class="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all mb-4"
+               onkeydown="if(event.key==='Enter') confirmModal()" />
+        <div class="flex gap-2 justify-end">
+            <button onclick="closeModal()" class="px-4 py-2 text-sm font-semibold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-all">Cancel</button>
+            <button onclick="confirmModal()" class="px-4 py-2 text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition-all" id="modal-confirm-btn">Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════ SCRIPTS ════════════════════ -->
+<script>
+/* ═══════════════════════════════════════════
+   SIDEBAR DATA MODEL
+   folders: [{ id, name, expanded, modules:[{id,name,status}] }]
+   status: 'draft' | 'generated' | 'migrated'
+═══════════════════════════════════════════ */
+var sidebarData = {
+    folders: [
+        { id:'f1', name:'Core Modules', expanded:true,  modules:[{id:'m1',name:'UserProfile',status:'generated'},{id:'m2',name:'RoleManager',status:'migrated'}] },
+        { id:'f2', name:'Commerce',     expanded:false, modules:[{id:'m3',name:'ProductCatalog',status:'draft'}] },
+        { id:'f3', name:'CMS',          expanded:false, modules:[] }
+    ]
+};
+
+var ctxTarget    = null;   // { type:'folder'|'module', folderId, moduleId }
+var modalAction  = null;   // callback on confirm
+var activeModule = null;   // { folderId, moduleId }
+
+/* ─── Sidebar toggle ─── */
+function toggleSidebar() {
+    var sw = document.getElementById('sidebarToggleSwitch');
+    var panel = document.getElementById('sidebar-panel');
+    if (sw.checked) {
+        panel.classList.remove('closed');
+        autoAddCurrentModule();
+    } else {
+        panel.classList.add('closed');
+    }
+}
+
+/* ─── Auto-add current module name to sidebar ─── */
+function autoAddCurrentModule() {
+    var inp = document.getElementById('ModuleNameInput');
+    var name = inp ? inp.value.trim() : '';
+    if (!name) return;
+    if (sidebarData.folders.length === 0) {
+        sidebarData.folders.push({ id: uid(), name: 'Core Modules', expanded: true, modules: [] });
+    }
+    var folder = sidebarData.folders[0];
+    var existing = folder.modules.find(function(m){ return m.name === name; });
+    if (!existing) {
+        existing = { id: uid(), name: name, status: 'draft' };
+        folder.modules.push(existing);
+        folder.expanded = true;
+    }
+    activeModule = { folderId: folder.id, moduleId: existing.id };
+    renderSidebar();
+}
+
+/* ─── Generate IDs ─── */
+function uid() { return Math.random().toString(36).slice(2,9); }
+
+/* ─── Status badge ─── */
+var STATUS_META = {
+    draft:     { label:'Draft',     bg:'#f1f5f9', text:'#64748b' },
+    generated: { label:'Generated', bg:'#eef2ff', text:'#4338ca' },
+    migrated:  { label:'Migrated',  bg:'#f0fdf4', text:'#16a34a' }
+};
+
+/* ─── RENDER TREE ─── */
+function renderSidebar(filter) {
+    var tree = document.getElementById('sidebar-tree');
+    filter = (filter || '').toLowerCase();
+
+    var totalFolders = sidebarData.folders.length;
+    var totalModules = 0;
+    sidebarData.folders.forEach(function(f){ totalModules += f.modules.length; });
+    document.getElementById('sidebar-stats').textContent = totalModules + ' module' + (totalModules!==1?'s':'') + ' · ' + totalFolders + ' folder' + (totalFolders!==1?'s':'');
+
+    if (sidebarData.folders.length === 0) {
+        tree.innerHTML = '<div class="text-center py-10 text-slate-400"><div class="text-xs font-semibold mb-1">No folders yet</div><div class="text-xs">Click "New Folder" to start organizing</div></div>';
+        return;
+    }
+
+    var html = '';
+    sidebarData.folders.forEach(function(folder, idx) {
+        var visibleModules = filter
+            ? folder.modules.filter(function(m){ return m.name.toLowerCase().indexOf(filter) !== -1; })
+            : folder.modules;
+        if (filter && visibleModules.length === 0 && folder.name.toLowerCase().indexOf(filter) === -1) return;
+
+        var isExpanded = folder.expanded || (filter && visibleModules.length > 0);
+        html += '<div class="folder-group mb-0.5" data-folder-id="' + folder.id + '">';
+
+        /* Folder row */
+        html += '<div class="folder-row flex items-center gap-1 px-2 py-1 rounded-md cursor-pointer hover:bg-slate-50 group drop-zone transition-colors text-xs" '
+              + 'draggable="true" '
+              + 'ondragstart="onFolderDragStart(event,\'' + folder.id + '\')" '
+              + 'ondragend="onDragEnd(event)" '
+              + 'onclick="toggleFolder(\'' + folder.id + '\')" '
+              + 'oncontextmenu="showCtxMenu(event,\'folder\',\'' + folder.id + '\',null)" '
+              + 'ondragover="onDragOver(event,this)" ondragleave="onDragLeave(this)" ondrop="onDrop(event,\'' + folder.id + '\')">';
+
+        /* Chevron */
+        html += '<svg class="w-2.5 h-2.5 text-slate-400 flex-shrink-0 transition-transform ' + (isExpanded?'rotate-90':'') + '" '
+              + 'fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24" id="chev-' + folder.id + '">'
+              + '<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>';
+
+        /* Folder icon - open/closed */
+        html += '<svg class="w-3.5 h-3.5 flex-shrink-0 ' + (isExpanded?'text-amber-500':'text-amber-400') + '" fill="currentColor" viewBox="0 0 20 20">'
+              + (isExpanded
+                ? '<path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>'
+                : '<path d="M2 6a2 2 0 012-2h4l2 2h6a2 2 0 012 2v7a2 2 0 01-2 2H4a2 2 0 01-2-2V6z"/>')
+              + '</svg>';
+
+        /* Name */
+        html += '<span class="text-xs font-semibold text-slate-600 flex-1 truncate">' + escHtml(folder.name) + '</span>';
+
+        /* Move up/down btns */
+        html += '<span class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">';
+        if (idx > 0) html += '<button class="w-3.5 h-3.5 flex items-center justify-center text-slate-400 hover:text-indigo-500 rounded transition-colors" onclick="event.stopPropagation();moveFolder(' + idx + ',-1)" title="Move folder up"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>';
+        if (idx < sidebarData.folders.length - 1) html += '<button class="w-3.5 h-3.5 flex items-center justify-center text-slate-400 hover:text-indigo-500 rounded transition-colors" onclick="event.stopPropagation();moveFolder(' + idx + ',1)" title="Move folder down"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>';
+        html += '</span>';
+
+        /* More btn */
+        html += '<button class="w-4 h-4 flex items-center justify-center text-slate-300 hover:text-slate-500 opacity-0 group-hover:opacity-100 rounded transition-all flex-shrink-0" '
+              + 'onclick="event.stopPropagation();showCtxMenu(event,\'folder\',\'' + folder.id + '\',null)" title="Options">'
+              + '<svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="1.5"/><circle cx="10" cy="10" r="1.5"/><circle cx="10" cy="16" r="1.5"/></svg>'
+              + '</button>';
+
+        html += '</div>'; /* end folder-row */
+
+        /* Children */
+        html += '<div class="sidebar-folder-children pl-3 ' + (isExpanded?'':'collapsed') + '" id="children-' + folder.id + '" style="max-height:' + (isExpanded ? visibleModules.length*36+'px' : '0') + '">';
+
+        if (visibleModules.length === 0) {
+            html += '<div class="text-xs text-slate-400 italic px-2 py-1.5">No modules</div>';
+        }
+
+        visibleModules.forEach(function(mod, idx) {
+            var isActive = activeModule && activeModule.folderId === folder.id && activeModule.moduleId === mod.id;
+            var sm = STATUS_META[mod.status] || STATUS_META.draft;
+            html += '<div class="module-item flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer group transition-colors text-xs ' + (isActive?'active':'hover:bg-slate-50') + '" '
+                  + 'data-folder-id="' + folder.id + '" data-module-id="' + mod.id + '" '
+                  + 'draggable="true" '
+                  + 'ondragstart="onDragStart(event,\'' + folder.id + '\',\'' + mod.id + '\')" '
+                  + 'ondragend="onDragEnd(event)" '
+                  + 'ondragover="onModuleDragOver(event,this)" ondragleave="onModuleDragLeave(event,this)" ondrop="onModuleDrop(event,\'' + folder.id + '\',\'' + mod.id + '\')" '
+                  + 'onclick="selectModule(\'' + folder.id + '\',\'' + mod.id + '\')" '
+                  + 'oncontextmenu="showCtxMenu(event,\'module\',\'' + folder.id + '\',\'' + mod.id + '\')">';
+            html += '<svg class="w-3.5 h-3.5 flex-shrink-0 ' + (isActive?'text-indigo-500':'text-slate-400') + '" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>';
+            html += '<span class="module-name text-xs font-medium text-slate-600 flex-1 truncate">' + escHtml(mod.name) + '</span>';
+            html += '<span class="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">';
+            if (idx > 0) html += '<button class="w-3.5 h-3.5 flex items-center justify-center text-slate-400 hover:text-indigo-500 rounded transition-colors" onclick="event.stopPropagation();moveModule(\'' + folder.id + '\',\'' + mod.id + '\',-1)" title="Move up"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/></svg></button>';
+            if (idx < visibleModules.length - 1) html += '<button class="w-3.5 h-3.5 flex items-center justify-center text-slate-400 hover:text-indigo-500 rounded transition-colors" onclick="event.stopPropagation();moveModule(\'' + folder.id + '\',\'' + mod.id + '\',1)" title="Move down"><svg class="w-2.5 h-2.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg></button>';
+            html += '</span>';
+            html += '<span class="text-xs font-medium px-1.5 py-0.5 rounded-md leading-none opacity-0 group-hover:opacity-100 transition-opacity" style="background:' + sm.bg + ';color:' + sm.text + '">' + sm.label + '</span>';
+            html += '</div>';
         });
-        btn.classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
-        btn.classList.add('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
-        btn.querySelector('span').className = 'w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0';
-        document.getElementById('HasImage').value = btn.dataset.value;
+
+        /* Add module shortcut */
+        html += '<button class="w-full text-left flex items-center gap-1 px-2 py-1 text-xs font-medium text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 rounded-md transition-all" '
+              + 'onclick="promptAddModule(\'' + folder.id + '\')">'
+              + '<svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>'
+              + 'Add module'
+              + '</button>';
+
+        html += '</div>'; /* end children */
+        html += '</div>'; /* end folder-group */
     });
 
-    function updateFieldCount() {
-        var n = document.querySelectorAll('#fieldsTable tbody tr.field-row').length;
-        document.getElementById('mgFieldCount').textContent = n + ' field' + (n !== 1 ? 's' : '');
-        document.getElementById('mgEmptyRow').style.display = n === 0 ? '' : 'none';
+    tree.innerHTML = html || '<div class="text-center py-8 text-xs text-slate-400">No results for "' + escHtml(filter) + '"</div>';
+}
+
+/* ─── Toggle folder expand ─── */
+function toggleFolder(folderId) {
+    var f = findFolder(folderId);
+    if (!f) return;
+    f.expanded = !f.expanded;
+    renderSidebar();
+}
+
+/* ─── Expand all ─── */
+function expandAll() {
+    var allExpanded = sidebarData.folders.every(function(f){ return f.expanded; });
+    sidebarData.folders.forEach(function(f){ f.expanded = !allExpanded; });
+    document.getElementById('expand-all-btn').textContent = allExpanded ? 'Expand all' : 'Collapse all';
+    renderSidebar();
+}
+
+/* ─── Select module ─── */
+function selectModule(folderId, moduleId) {
+    activeModule = { folderId: folderId, moduleId: moduleId };
+    var folder = findFolder(folderId);
+    var mod = folder ? findModule(folder, moduleId) : null;
+    if (mod) {
+        // Populate module name input
+        var inp = document.getElementById('ModuleNameInput');
+        if (inp) inp.value = mod.name;
+        syncModuleNameToBreadcrumb(mod.name, folder.name);
     }
+    renderSidebar();
+}
 
-    function getInputClasses() {
-        return 'w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-300 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 transition-all duration-150';
+/* ─── Search filter ─── */
+function filterSidebar(val) { renderSidebar(val); }
+
+/* ─── Find helpers ─── */
+function findFolder(id) { return sidebarData.folders.find(function(f){ return f.id === id; }); }
+function findModule(folder, id) { return folder.modules.find(function(m){ return m.id === id; }); }
+
+/* ─── Breadcrumb sync ─── */
+function syncModuleNameToBreadcrumb(name, folderName) {
+    var bar = document.getElementById('breadcrumb-bar');
+    var parts = ['<svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>'];
+    parts.push('<span class="bc-sep">/</span>');
+    if (folderName) {
+        parts.push('<span class="text-slate-500 font-medium">' + escHtml(folderName) + '</span>');
+        parts.push('<span class="bc-sep">/</span>');
     }
+    parts.push('<span class="text-slate-500 font-semibold">' + (name || 'Module Designer') + '</span>');
+    bar.innerHTML = parts.join(' ');
+}
 
-    function addField() {
-        var tbody = document.querySelector('#fieldsTable tbody');
-        
-        // We create two elements: the standard row, and the expandable validation/enum settings row.
-        var row = document.createElement('tr');
-        row.className = 'field-row hover:bg-slate-50/30 transition-colors duration-150 fade-in';
-        row.dataset.index = index;
+/* ─── Save current form module to sidebar ─── */
+function saveCurrentModuleToSidebar() {
+    var inp = document.getElementById('ModuleNameInput');
+    var name = inp ? inp.value.trim() : '';
+    if (!name) { alert('Please enter a Module Name first.'); return; }
 
-        var detailRow = document.createElement('tr');
-        detailRow.className = 'detail-row hidden bg-slate-50/40 border-l-2 border-indigo-500 transition-all duration-200';
-        detailRow.dataset.index = index;
+    // If a folder is active, add to it; else pick first or create one
+    if (activeModule) {
+        var folder = findFolder(activeModule.folderId);
+        if (folder) {
+            var existingMod = folder.modules.find(function(m){ return m.name === name; });
+            if (!existingMod) {
+                folder.modules.push({ id: uid(), name: name, status: 'draft' });
+                renderSidebar();
+                showToast('Module "' + name + '" saved to ' + folder.name);
+                return;
+            } else {
+                showToast('Module already exists in this folder.');
+                return;
+            }
+        }
+    }
+    // No active folder → use first folder or ask
+    if (sidebarData.folders.length === 0) {
+        showModal('Choose a Folder', 'Enter a folder name to save "' + name + '" into:', 'Create Folder', function(folderName) {
+            if (!folderName) return;
+            var newFolder = { id: uid(), name: folderName, expanded: true, modules: [{ id: uid(), name: name, status: 'draft' }] };
+            sidebarData.folders.push(newFolder);
+            renderSidebar();
+            showToast('Saved to new folder "' + folderName + '"');
+        });
+    } else {
+        // Add to first folder
+        var first = sidebarData.folders[0];
+        first.modules.push({ id: uid(), name: name, status: 'draft' });
+        first.expanded = true;
+        renderSidebar();
+        showToast('Module "' + name + '" saved to ' + first.name);
+    }
+}
 
-        var classes = getInputClasses();
+/* ─── Prompts ─── */
+function promptNewFolder(parentId) {
+    showModal('New Folder', 'Enter a name for the new folder.', 'Create', function(name) {
+        if (!name) return;
+        sidebarData.folders.push({ id: uid(), name: name, expanded: true, modules: [] });
+        renderSidebar();
+        showToast('Folder "' + name + '" created');
+    });
+}
 
-        // Standard Compact Column Inputs - Fixed syntax using standard concatenation
-        row.innerHTML = ' \
-            <td class="p-3 pl-6"> \
-                <input name="Fields[' + index + '].Name" class="' + classes + '" data-field="Name" placeholder="e.g., Title" required /> \
-            </td> \
-            <td class="p-3"> \
-                <select name="Fields[' + index + '].Type" class="' + classes + ' field-type cursor-pointer" data-field="Type" onchange="onTypeChange(this)"> \
-                    <option value="string">string</option> \
-                    <option value="int">int</option> \
-                    <option value="decimal">decimal</option> \
-                    <option value="bool">bool</option> \
-                    <option value="DateTime">DateTime</option> \
-                    <option value="enum">enum</option> \
-                    <option value="relation">relation</option> \
-                </select> \
-            </td> \
-            <td class="p-3"> \
-                <input name="Fields[' + index + '].Length" type="number" class="' + classes + ' field-len-input" data-field="Length" placeholder="—" /> \
-            </td> \
-            <td class="p-3 text-center"> \
-                <div class="inline-flex items-center justify-center"> \
-                    <label class="relative inline-flex items-center cursor-pointer group"> \
-                        <input type="checkbox" name="Fields[' + index + '].IsNullable" value="true" data-field="IsNullable" class="sr-only peer" /> \
-                        <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
-                    </label> \
-                    <input type="hidden" name="Fields[' + index + '].IsNullable" value="false" data-field="IsNullable" /> \
-                </div> \
-            </td> \
-            <td class="p-3 pr-6 text-right"> \
-                <div class="inline-flex items-center gap-1.5"> \
-                    <button type="button" onclick="toggleDetails(this)" class="details-toggle-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-100/80 border border-transparent rounded-lg transition-all" title="Configure validation & parameters"> \
-                        <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"> \
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/> \
-                        </svg> \
-                        <span class="text-sm font-medium tracking-tight">Validation</span> \
-                    </button> \
-                    <button type="button" onclick="removeField(this)" class="inline-flex items-center justify-center w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all" aria-label="Remove Field"> \
-                        <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"> \
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/> \
-                        </svg> \
-                    </button> \
-                </div> \
-            </td> \
-        ';
+function promptAddModule(folderId) {
+    if (!folderId && sidebarData.folders.length === 0) {
+        showToast('Create a folder first.');
+        return;
+    }
+    var targetFolder = folderId ? findFolder(folderId) : sidebarData.folders[0];
+    showModal('Add Module', 'Enter the module name to add to "' + targetFolder.name + '".', 'Add', function(name) {
+        if (!name) return;
+        targetFolder.modules.push({ id: uid(), name: name, status: 'draft' });
+        targetFolder.expanded = true;
+        renderSidebar();
+        showToast('Module "' + name + '" added');
+    });
+}
 
-        // Validation Config Details Sub-Row Drawer Layout - Fixed string concatenation
-        detailRow.innerHTML = ' \
-            <td colspan="5" class="p-4 bg-slate-50/50 border-t border-b border-slate-100"> \
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> \
-                    <div class="space-y-4 validation-settings-panel"> \
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
-                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Validation Rules</span> \
-                            <div class="flex items-center gap-2"> \
-                                <span class="text-sm font-semibold text-slate-500">Required Property</span> \
-                                <label class="relative inline-flex items-center cursor-pointer group"> \
-                                    <input type="checkbox" name="Fields[' + index + '].IsRequired" value="true" data-field="IsRequired" class="sr-only peer" /> \
-                                    <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
-                                </label> \
-                                <input type="hidden" name="Fields[' + index + '].IsRequired" value="false" data-field="IsRequired" /> \
-                            </div> \
-                        </div> \
-                        <div class="grid grid-cols-2 gap-3 min-max-validation-inputs"> \
-                            <div> \
-                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 min-label">Min Config</label> \
-                                <input type="number" class="' + classes + ' field-min" placeholder="—" /> \
-                            </div> \
-                            <div> \
-                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 max-label">Max Config</label> \
-                                <input type="number" class="' + classes + ' field-max" placeholder="—" /> \
-                            </div> \
-                        </div> \
-                    </div> \
-                    <div class="space-y-3 enum-settings-panel hidden"> \
-                        <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
-                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
-                            <div class="flex items-center gap-3 render-type-toggle"> \
-                                <span class="text-xs font-medium text-slate-400">Render as</span> \
-                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
-                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="false" checked class="w-3.5 h-3.5 text-indigo-600" /> \
-                                    <span class="text-xs font-semibold text-slate-600">Radio</span> \
-                                </label> \
-                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
-                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="true" class="w-3.5 h-3.5 text-indigo-600" /> \
-                                    <span class="text-xs font-semibold text-slate-600">Checkbox</span> \
-                                </label> \
-                            </div> \
-                        </div> \
-                        <div class="flex items-center gap-2 mb-2"> \
+/* ─── Context menu ─── */
+function showCtxMenu(e, type, folderId, moduleId) {
+    e.preventDefault(); e.stopPropagation();
+    ctxTarget = { type: type, folderId: folderId, moduleId: moduleId };
+
+    var menu = document.getElementById('ctx-menu');
+    var isFolder = type === 'folder';
+    document.getElementById('ctx-add-module').style.display  = isFolder ? '' : 'none';
+    document.getElementById('ctx-new-folder').style.display  = isFolder ? '' : 'none';
+
+    menu.style.left = e.clientX + 'px';
+    menu.style.top  = e.clientY + 'px';
+    menu.classList.add('visible');
+}
+
+function hideCtxMenu() {
+    document.getElementById('ctx-menu').classList.remove('visible');
+    ctxTarget = null;
+}
+
+function ctxAction(action) {
+    var tgt = ctxTarget;
+    hideCtxMenu();
+    if (!tgt) return;
+    var folder = tgt.folderId ? findFolder(tgt.folderId) : null;
+    var mod    = (folder && tgt.moduleId) ? findModule(folder, tgt.moduleId) : null;
+
+    if (action === 'add-module' && folder) {
+        promptAddModule(folder.id);
+    } else if (action === 'new-folder') {
+        promptNewFolder(folder ? folder.id : null);
+    } else if (action === 'rename') {
+        var current = mod ? mod.name : (folder ? folder.name : '');
+        showModal('Rename', 'Enter a new name.', 'Rename', function(newName) {
+            if (!newName) return;
+            if (mod) mod.name = newName;
+            else if (folder) folder.name = newName;
+            renderSidebar();
+        }, current);
+    } else if (action === 'delete') {
+        if (mod && folder) {
+            folder.modules = folder.modules.filter(function(m){ return m.id !== mod.id; });
+            if (activeModule && activeModule.moduleId === mod.id) activeModule = null;
+            showToast('Module deleted.');
+        } else if (folder) {
+            sidebarData.folders = sidebarData.folders.filter(function(f){ return f.id !== folder.id; });
+            showToast('Folder deleted.');
+        }
+        renderSidebar();
+    }
+}
+
+/* ─── Drag & drop ─── */
+var dragPayload = null;
+function onDragStart(e, folderId, moduleId) {
+    dragPayload = { folderId: folderId, moduleId: moduleId };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', moduleId);
+    setTimeout(function(){ e.target.classList.add('dragging'); }, 0);
+}
+function onFolderDragStart(e, folderId) {
+    dragPayload = { folderId: folderId, moduleId: null };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', folderId);
+    setTimeout(function(){ e.target.classList.add('dragging'); }, 0);
+}
+function onDragEnd(e) {
+    e.target.classList.remove('dragging');
+    document.querySelectorAll('.drag-over').forEach(function(el){ el.classList.remove('drag-over'); });
+}
+function onDragOver(e, el) { e.preventDefault(); el.classList.add('drag-over'); }
+function onDragLeave(el) { el.classList.remove('drag-over'); }
+function onModuleDragOver(e, el) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    el.classList.add('drag-over');
+}
+function onModuleDragLeave(e, el) {
+    el.classList.remove('drag-over');
+}
+function onModuleDrop(e, targetFolderId, targetModuleId) {
+    e.preventDefault();
+    e.stopPropagation();
+    document.querySelectorAll('.drag-over, .dragging').forEach(function(el){ el.classList.remove('drag-over','dragging'); });
+    if (!dragPayload) return;
+    dropModule(dragPayload.folderId, dragPayload.moduleId, targetFolderId, targetModuleId, e);
+    dragPayload = null;
+}
+function onDrop(e, targetFolderId) {
+    e.preventDefault();
+    document.querySelectorAll('.drag-over, .dragging').forEach(function(el){ el.classList.remove('drag-over','dragging'); });
+    if (!dragPayload) return;
+    if (dragPayload.moduleId === null) {
+        reorderFolders(dragPayload.folderId, targetFolderId);
+    } else {
+        dropModule(dragPayload.folderId, dragPayload.moduleId, targetFolderId, null, e);
+    }
+    dragPayload = null;
+}
+function reorderFolders(draggedId, targetId) {
+    if (draggedId === targetId) return;
+    var draggedIdx = -1, targetIdx = -1;
+    for (var i = 0; i < sidebarData.folders.length; i++) {
+        if (sidebarData.folders[i].id === draggedId) draggedIdx = i;
+        if (sidebarData.folders[i].id === targetId) targetIdx = i;
+    }
+    if (draggedIdx === -1 || targetIdx === -1) return;
+    var folder = sidebarData.folders.splice(draggedIdx, 1)[0];
+    if (draggedIdx < targetIdx) targetIdx--;
+    sidebarData.folders.splice(targetIdx, 0, folder);
+    renderSidebar();
+    showToast('Folder reordered');
+}
+/* ─── Move folder up/down ─── */
+function moveFolder(idx, dir) {
+    var newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= sidebarData.folders.length) return;
+    var f = sidebarData.folders.splice(idx, 1)[0];
+    sidebarData.folders.splice(newIdx, 0, f);
+    renderSidebar();
+}
+function dropModule(srcFolderId, moduleId, tgtFolderId, tgtModuleId, e) {
+    var srcFolder = findFolder(srcFolderId);
+    var tgtFolder = findFolder(tgtFolderId);
+    var mod = srcFolder ? findModule(srcFolder, moduleId) : null;
+    if (!mod || !tgtFolder) return;
+
+    srcFolder.modules = srcFolder.modules.filter(function(m){ return m.id !== mod.id; });
+
+    if (tgtModuleId) {
+        // Insert before/after target module based on mouse Y
+        var tgtEl = document.querySelector('[data-module-id="' + tgtModuleId + '"]');
+        var insertIdx = 0;
+        if (tgtEl) {
+            var rect = tgtEl.getBoundingClientRect();
+            var items = tgtFolder.modules;
+            // Find target module index after removal
+            for (var i = 0; i < items.length; i++) {
+                if (items[i].id === tgtModuleId) { insertIdx = i; break; }
+            }
+            // If dragged below halfway, insert after
+            if (e.clientY > rect.top + rect.height / 2) insertIdx++;
+        }
+        tgtFolder.modules.splice(insertIdx, 0, mod);
+    } else {
+        // Drop on folder — append to end
+        tgtFolder.modules.push(mod);
+    }
+    tgtFolder.expanded = true;
+    renderSidebar();
+    showToast('Moved "' + mod.name + '"');
+}
+
+/* ─── Move module up/down ─── */
+function moveModule(folderId, moduleId, dir) {
+    var folder = findFolder(folderId);
+    if (!folder) return;
+    var modules = folder.modules, idx = -1;
+    for (var i = 0; i < modules.length; i++) { if (modules[i].id === moduleId) { idx = i; break; } }
+    if (idx === -1) return;
+    var newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= modules.length) return;
+    var mod = modules.splice(idx, 1)[0];
+    modules.splice(newIdx, 0, mod);
+    renderSidebar();
+}
+
+/* ─── Modal ─── */
+function showModal(title, desc, confirmLabel, callback, prefill) {
+    modalAction = callback;
+    document.getElementById('modal-title').textContent = title;
+    document.getElementById('modal-desc').textContent  = desc;
+    document.getElementById('modal-confirm-btn').textContent = confirmLabel;
+    var inp = document.getElementById('modal-input');
+    inp.value = prefill || '';
+    document.getElementById('modal-backdrop').classList.remove('closed');
+    setTimeout(function(){ inp.focus(); inp.select(); }, 50);
+}
+function closeModal(e) {
+    if (e && e.target !== document.getElementById('modal-backdrop')) return;
+    document.getElementById('modal-backdrop').classList.add('closed');
+    modalAction = null;
+}
+function confirmModal() {
+    var val = document.getElementById('modal-input').value.trim();
+    document.getElementById('modal-backdrop').classList.add('closed');
+    if (modalAction) modalAction(val);
+    modalAction = null;
+}
+
+/* ─── Toast ─── */
+function showToast(msg) {
+    var t = document.createElement('div');
+    t.className = 'fixed bottom-5 right-5 z-[400] bg-slate-800 text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2';
+    t.style.animation = 'fadeIn 0.2s both';
+    t.innerHTML = '<svg class="w-4 h-4 text-indigo-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>' + escHtml(msg);
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; t.style.transition='opacity 0.3s'; setTimeout(function(){ t.remove(); },300); }, 2500);
+}
+
+/* ─── Escape HTML ─── */
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── Global click → close ctx menu ─── */
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('#ctx-menu')) hideCtxMenu();
+});
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        hideCtxMenu();
+        document.getElementById('modal-backdrop').classList.add('closed');
+    }
+});
+
+
+/* ══════════════════════════════════
+   IMAGE TOGGLE
+══════════════════════════════════ */
+document.addEventListener('click', function(e) {
+    var btn = e.target.closest('.img-btn');
+    if (!btn) return;
+    document.querySelectorAll('.img-btn').forEach(function(b) {
+        b.classList.remove('selected','border-indigo-500','bg-indigo-50/40','text-indigo-700');
+        b.classList.add('border-slate-200','bg-white','text-slate-600');
+        b.querySelector('span').className = 'w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0';
+    });
+    btn.classList.remove('border-slate-200','bg-white','text-slate-600');
+    btn.classList.add('selected','border-indigo-500','bg-indigo-50/40','text-indigo-700');
+    btn.querySelector('span').className = 'w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0';
+    document.getElementById('HasImage').value = btn.dataset.value;
+});
+
+
+/* ══════════════════════════════════
+   FIELDS TABLE
+══════════════════════════════════ */
+var index = 0;
+var availableTables = @Html.Raw(tablesJson);
+
+function updateFieldCount() {
+    var n = document.querySelectorAll('#fieldsTable tbody tr.field-row').length;
+    document.getElementById('mgFieldCount').textContent = n + ' field' + (n!==1?'s':'');
+    document.getElementById('mgEmptyRow').style.display = n===0?'':'none';
+}
+
+function getInputClasses() {
+    return 'w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-300 bg-white outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/5 transition-all duration-150';
+}
+
+function addField() {
+    var tbody = document.querySelector('#fieldsTable tbody');
+    var row = document.createElement('tr');
+    row.className = 'field-row hover:bg-slate-50/30 transition-colors duration-150 fade-in';
+    row.dataset.index = index;
+
+    var detailRow = document.createElement('tr');
+    detailRow.className = 'detail-row hidden bg-slate-50/40 border-l-2 border-indigo-500 transition-all duration-200';
+    detailRow.dataset.index = index;
+
+    var classes = getInputClasses();
+
+    row.innerHTML = ' \
+        <td class="p-3 pl-6"> \
+            <input name="Fields[' + index + '].Name" class="' + classes + '" data-field="Name" placeholder="e.g., Title" required /> \
+        </td> \
+        <td class="p-3"> \
+            <select name="Fields[' + index + '].Type" class="' + classes + ' field-type cursor-pointer" data-field="Type" onchange="onTypeChange(this)"> \
+                <option value="string">string</option> \
+                <option value="int">int</option> \
+                <option value="decimal">decimal</option> \
+                <option value="bool">bool</option> \
+                <option value="DateTime">DateTime</option> \
+                <option value="enum">enum</option> \
+                <option value="relation">relation</option> \
+            </select> \
+        </td> \
+        <td class="p-3"> \
+            <input name="Fields[' + index + '].Length" type="number" class="' + classes + ' field-len-input" data-field="Length" placeholder="—" /> \
+        </td> \
+        <td class="p-3 text-center"> \
+            <div class="inline-flex items-center justify-center"> \
+                <label class="relative inline-flex items-center cursor-pointer group"> \
+                    <input type="checkbox" name="Fields[' + index + '].IsNullable" value="true" data-field="IsNullable" class="sr-only peer" /> \
+                    <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                </label> \
+                <input type="hidden" name="Fields[' + index + '].IsNullable" value="false" data-field="IsNullable" /> \
+            </div> \
+        </td> \
+        <td class="p-3 pr-6 text-right"> \
+            <div class="inline-flex items-center gap-1.5"> \
+                <button type="button" onclick="toggleDetails(this)" class="details-toggle-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-100/80 border border-transparent rounded-lg transition-all" title="Configure validation"> \
+                    <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg> \
+                    <span class="text-sm font-medium tracking-tight">Validation</span> \
+                </button> \
+                <button type="button" onclick="removeField(this)" class="inline-flex items-center justify-center w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all" aria-label="Remove Field"> \
+                    <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/></svg> \
+                </button> \
+            </div> \
+        </td> \
+    ';
+
+    detailRow.innerHTML = ' \
+        <td colspan="5" class="p-4 bg-slate-50/50 border-t border-b border-slate-100"> \
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> \
+                <div class="space-y-4 validation-settings-panel"> \
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
+                        <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Validation Rules</span> \
+                        <div class="flex items-center gap-2"> \
+                            <span class="text-sm font-semibold text-slate-500">Required Property</span> \
                             <label class="relative inline-flex items-center cursor-pointer group"> \
-                                <input type="checkbox" name="Fields[' + index + '].UseCommonTable" value="true" data-field="UseCommonTable" class="sr-only peer use-common-table-cb" onchange="onUseCommonTableChange(this)" /> \
+                                <input type="checkbox" name="Fields[' + index + '].IsRequired" value="true" data-field="IsRequired" class="sr-only peer" /> \
                                 <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
                             </label> \
-                            <span class="text-sm font-semibold text-slate-600">Use Common Table</span> \
-                            <input type="hidden" name="Fields[' + index + '].UseCommonTable" value="false" data-field="UseCommonTable" /> \
+                            <input type="hidden" name="Fields[' + index + '].IsRequired" value="false" data-field="IsRequired" /> \
                         </div> \
-                        <div class="flex gap-2"> \
-                            <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
-                            <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"> \
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"> \
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/> \
-                                </svg> \
-                                Add \
-                            </button> \
                     </div> \
-                    <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable (Type = ModuleName + FieldName)</div> \
+                    <div class="grid grid-cols-2 gap-3 min-max-validation-inputs"> \
+                        <div><label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 min-label">Min Config</label><input type="number" class="' + classes + ' field-min" placeholder="—" /></div> \
+                        <div><label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 max-label">Max Config</label><input type="number" class="' + classes + ' field-max" placeholder="—" /></div> \
+                    </div> \
+                </div> \
+                <div class="space-y-3 enum-settings-panel hidden"> \
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
+                        <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
+                        <div class="flex items-center gap-3 render-type-toggle"> \
+                            <span class="text-xs font-medium text-slate-400">Render as</span> \
+                            <label class="inline-flex items-center gap-1 cursor-pointer"><input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="false" checked class="w-3.5 h-3.5 text-indigo-600" /><span class="text-xs font-semibold text-slate-600">Radio</span></label> \
+                            <label class="inline-flex items-center gap-1 cursor-pointer"><input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="true" class="w-3.5 h-3.5 text-indigo-600" /><span class="text-xs font-semibold text-slate-600">Checkbox</span></label> \
+                        </div> \
+                    </div> \
+                    <div class="flex items-center gap-2 mb-2"> \
+                        <label class="relative inline-flex items-center cursor-pointer group"> \
+                            <input type="checkbox" name="Fields[' + index + '].UseCommonTable" value="true" data-field="UseCommonTable" class="sr-only peer use-common-table-cb" onchange="onUseCommonTableChange(this)" /> \
+                            <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                        </label> \
+                        <span class="text-sm font-semibold text-slate-600">Use Common Table</span> \
+                        <input type="hidden" name="Fields[' + index + '].UseCommonTable" value="false" data-field="UseCommonTable" /> \
+                    </div> \
+                    <div class="flex gap-2"> \
+                        <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
+                        <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>Add</button> \
+                    </div> \
+                    <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable</div> \
                     <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
                         <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
                         <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
                     </div> \
                 </div> \
                 <div class="space-y-3 relation-settings-panel hidden"> \
-                    <div class="border-b border-slate-100 pb-2"> \
-                        <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Related Table</span> \
-                    </div> \
+                    <div class="border-b border-slate-100 pb-2"><span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Related Table</span></div> \
                     <select class="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 relation-table-select" onchange="onRelationTableChange(this)"> \
                         <option value="">-- Select Related Table --</option> \
                     </select> \
@@ -412,7 +1101,7 @@
                     <input type="hidden" name="Fields[' + index + '].IsRelation" value="true" data-field="IsRelation" /> \
                     <div class="flex items-center justify-between bg-indigo-50/60 rounded-xl px-4 py-2.5 border border-indigo-100"> \
                         <span class="text-sm font-semibold text-slate-700">Pivot Table (Many-to-Many)</span> \
-                        <label class="relative inline-flex items-center cursor-pointer group"> \
+                        <label class="relative inline-flex items-center cursor-pointer"> \
                             <input type="checkbox" name="Fields[' + index + '].IsPivot" value="true" data-field="IsPivot" class="sr-only peer" /> \
                             <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
                         </label> \
@@ -422,433 +1111,231 @@
                 </div> \
             </div> \
         </td> \
-        ';
+    ';
 
-        // Fix: use addEventListener instead of inline onkeydown for reliable tag input
-        var tagInput = detailRow.querySelector('.tag-input');
-        tagInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault();
-                addOptionTag(this);
-            }
+    var tagInput = detailRow.querySelector('.tag-input');
+    tagInput.addEventListener('keydown', function(e) {
+        if (e.key==='Enter'||e.key===',') { e.preventDefault(); addOptionTag(this); }
+    });
+
+    tbody.appendChild(row);
+    tbody.appendChild(detailRow);
+
+    var relSelect = detailRow.querySelector('.relation-table-select');
+    if (relSelect) {
+        availableTables.forEach(function(t) {
+            var opt=document.createElement('option'); opt.value=t; opt.textContent=t; relSelect.appendChild(opt);
         });
-
-        tbody.appendChild(row);
-        tbody.appendChild(detailRow);
-
-        // Populate relation table dropdown
-        var relSelect = detailRow.querySelector('.relation-table-select');
-        if (relSelect) {
-            for (var i = 0; i < availableTables.length; i++) {
-                var opt = document.createElement('option');
-                opt.value = availableTables[i];
-                opt.textContent = availableTables[i];
-                relSelect.appendChild(opt);
-            }
-        }
-
-        onTypeChange(row.querySelector('.field-type'));
-        index++;
-        updateFieldCount();
     }
 
-    function toggleDetails(btn) {
-        if (!btn) return;
-        var row = btn.closest('tr');
-        if (!row) return;
-        var trIndex = row.dataset.index;
-        var tbody = row.parentElement;
-        if (!tbody) return;
-        
-        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        if (!targetDetailRow) return;
-        
-        if (targetDetailRow.classList.contains('hidden')) {
-            targetDetailRow.classList.remove('hidden');
-            btn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-        } else {
-            targetDetailRow.classList.add('hidden');
-            btn.classList.remove('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-        }
+    onTypeChange(row.querySelector('.field-type'));
+    index++;
+    updateFieldCount();
+}
+
+function toggleDetails(btn) {
+    if (!btn) return;
+    var row = btn.closest('tr'); if (!row) return;
+    var trIndex = row.dataset.index;
+    var tbody = row.parentElement; if (!tbody) return;
+    var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="'+trIndex+'"]'); if (!targetDetailRow) return;
+    if (targetDetailRow.classList.contains('hidden')) {
+        targetDetailRow.classList.remove('hidden');
+        btn.classList.add('text-indigo-600','bg-indigo-50','border-indigo-100');
+    } else {
+        targetDetailRow.classList.add('hidden');
+        btn.classList.remove('text-indigo-600','bg-indigo-50','border-indigo-100');
     }
+}
 
-    function onTypeChange(select) {
-        if (!select) return;
-        var row = select.closest('tr');
-        if (!row) return;
-        var trIndex = row.dataset.index;
-        var tbody = row.parentElement;
-        if (!tbody) return;
-        
-        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        if (!detailRow) return;
-        
-        var isEnum = select.value === 'enum';
-        var isRelation = select.value === 'relation';
+function onTypeChange(select) {
+    if (!select) return;
+    var row = select.closest('tr'); if (!row) return;
+    var trIndex = row.dataset.index;
+    var tbody = row.parentElement; if (!tbody) return;
+    var detailRow = tbody.querySelector('tr.detail-row[data-index="'+trIndex+'"]'); if (!detailRow) return;
+    var isEnum = select.value==='enum', isRelation = select.value==='relation';
+    var isRelationInput = detailRow.querySelector('input[data-field="IsRelation"]');
+    if (isRelationInput) isRelationInput.disabled = !isRelation;
+    var lenInput=row.querySelector('.field-len-input'), valSettings=detailRow.querySelector('.validation-settings-panel'), enumSettings=detailRow.querySelector('.enum-settings-panel'), relationSettings=detailRow.querySelector('.relation-settings-panel'), detailToggleBtn=row.querySelector('.details-toggle-btn');
+    if (lenInput) {
+        if (select.value==='string'||select.value==='int'||select.value==='decimal') { lenInput.disabled=false; lenInput.classList.remove('opacity-40'); lenInput.placeholder='—'; }
+        else { lenInput.disabled=true; lenInput.value=''; lenInput.classList.add('opacity-40'); lenInput.placeholder='N/A'; }
+    }
+    if (enumSettings) enumSettings.classList.add('hidden');
+    if (relationSettings) relationSettings.classList.add('hidden');
+    if (valSettings) valSettings.classList.remove('hidden');
+    if (isEnum) {
+        if (enumSettings) enumSettings.classList.remove('hidden');
+        if (valSettings) valSettings.classList.add('hidden');
+        detailRow.classList.remove('hidden');
+        if (detailToggleBtn) { detailToggleBtn.classList.add('text-indigo-600','bg-indigo-50','border-indigo-100'); var s=detailToggleBtn.querySelector('span'); if(s) s.textContent='Options'; }
+        var cb=enumSettings&&enumSettings.querySelector('.use-common-table-cb'); if(cb) onUseCommonTableChange(cb);
+    } else if (isRelation) {
+        if (relationSettings) relationSettings.classList.remove('hidden');
+        if (valSettings) valSettings.classList.add('hidden');
+        detailRow.classList.remove('hidden');
+        if (detailToggleBtn) { detailToggleBtn.classList.add('text-indigo-600','bg-indigo-50','border-indigo-100'); var s=detailToggleBtn.querySelector('span'); if(s) s.textContent='Relation'; }
+    } else {
+        if (detailToggleBtn) { var s=detailToggleBtn.querySelector('span'); if(s) s.textContent='Validation'; }
+    }
+    updateValidationInputNames(row);
+}
 
-        var isRelationInput = detailRow.querySelector('input[data-field="IsRelation"]');
-        if (isRelationInput) isRelationInput.disabled = !isRelation;
+function onUseCommonTableChange(cb) {
+    if (!cb) return;
+    var panel=cb.closest('.enum-settings-panel'); if (!panel) return;
+    var hint=panel.querySelector('.common-table-hint');
+    if (hint) { if(cb.checked) hint.classList.remove('hidden'); else hint.classList.add('hidden'); }
+    var renderToggle=panel.querySelector('.render-type-toggle');
+    if (renderToggle) { if(cb.checked) renderToggle.classList.add('hidden'); else renderToggle.classList.remove('hidden'); }
+}
 
-        var lenInput = row.querySelector('.field-len-input');
-        var valSettings = detailRow.querySelector('.validation-settings-panel');
-        var enumSettings = detailRow.querySelector('.enum-settings-panel');
-        var relationSettings = detailRow.querySelector('.relation-settings-panel');
-        var detailToggleBtn = row.querySelector('.details-toggle-btn');
-        
-        if (lenInput) {
-            if (select.value === 'string' || select.value === 'int' || select.value === 'decimal') {
-                lenInput.disabled = false;
-                lenInput.classList.remove('opacity-40');
-                lenInput.placeholder = '—';
-            } else {
-                lenInput.disabled = true;
-                lenInput.value = '';
-                lenInput.classList.add('opacity-40');
-                lenInput.placeholder = 'N/A';
+function onRelationTableChange(select) {
+    if (!select) return;
+    var row=select.closest('tr.detail-row'); if (!row) return;
+    var trIndex=row.dataset.index;
+    var tbody=row.parentElement; if (!tbody) return;
+    var fieldRow=tbody.querySelector('tr.field-row[data-index="'+trIndex+'"]'); if (!fieldRow) return;
+    var nameInput=fieldRow.querySelector('input[data-field="Name"]'); if (!nameInput) return;
+    var hidden=row.querySelector('.field-related-entity'); if(hidden) hidden.value=select.value;
+    if (select.value&&(!nameInput.value||availableTables.indexOf(nameInput.value)!==-1)) nameInput.value=select.value;
+}
+
+function onRelationSelect() {
+    var select=document.getElementById('relTableSelect'), table=select.value;
+    var hiddenContainer=document.getElementById('relationFieldsContainer'), deleteRow=document.getElementById('deleteBehaviorRow'), pivotCard=document.getElementById('pivotCard'), pivotTitle=document.getElementById('pivotTitle'), pivotCb=pivotCard.querySelector('.relation-pivot-cb');
+    if (!table) { deleteRow.classList.add('hidden'); hiddenContainer.innerHTML=''; pivotCard.classList.add('hidden','opacity-50'); pivotTitle.textContent='Pivot'; pivotCb.disabled=true; pivotCb.checked=false; return; }
+    deleteRow.classList.remove('hidden'); pivotCard.classList.remove('hidden','opacity-50'); pivotTitle.textContent=table+' Pivot'; pivotCb.disabled=false;
+    hiddenContainer.innerHTML='<input type="hidden" name="_rel_Name" value="'+table+'" /><input type="hidden" name="_rel_IsPivot" value="false" /><input type="hidden" name="_rel_DeleteBehavior" value="Cascade" />';
+}
+
+function clearRelation() {
+    var select=document.getElementById('relTableSelect'); select.value='';
+    document.getElementById('deleteBehaviorRow').classList.add('hidden');
+    document.getElementById('relationFieldsContainer').innerHTML='';
+    var pivotCard=document.getElementById('pivotCard'); pivotCard.classList.add('hidden','opacity-50');
+    document.getElementById('pivotTitle').textContent='Pivot';
+    var pivotCb=pivotCard.querySelector('.relation-pivot-cb'); pivotCb.disabled=true; pivotCb.checked=false;
+}
+
+function onDeleteBehaviorChange(radio) {
+    var existing=document.getElementById('relationFieldsContainer').querySelector('input[name="_rel_DeleteBehavior"]');
+    if (existing) existing.value=radio.value;
+}
+
+function handleAddTagClick(btn) {
+    if (!btn) return;
+    var panel=btn.closest('.enum-settings-panel'); if (!panel) return;
+    var input=panel.querySelector('.tag-input'); if (input) addOptionTag(input);
+}
+
+function addOptionTag(input) {
+    if (!input) return;
+    var value=input.value.trim(); if (!value) return;
+    if (value.indexOf(',')>-1) { value.split(',').forEach(function(v){ addOptionTagFromString(v.trim(),input); }); input.value=''; return; }
+    addOptionTagFromString(value,input); input.value=''; input.focus();
+}
+
+function addOptionTagFromString(value,input) {
+    if (!value||!input) return;
+    var panel=input.closest('.enum-settings-panel'); if (!panel) return;
+    var container=panel.querySelector('.tag-container'); if (!container) return;
+    var placeholder=container.querySelector('.placeholder-msg'); if (placeholder) placeholder.style.display='none';
+    var existing=container.querySelectorAll('.tag');
+    for (var i=0;i<existing.length;i++) { if (existing[i].dataset.val.toLowerCase()===value.toLowerCase()) return; }
+    var tag=document.createElement('span');
+    tag.className='tag inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-semibold text-indigo-600 leading-none';
+    tag.dataset.val=value;
+    tag.innerHTML=value+' <button type="button" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100/50 w-4 h-4 rounded inline-flex items-center justify-center font-bold text-xs leading-none transition-colors" onclick="removeOptionTag(this)">\u00d7</button>';
+    var hiddenInput=container.querySelector('.field-enum'); container.insertBefore(tag,hiddenInput); updateEnumHidden(container);
+}
+
+function removeOptionTag(btn) {
+    if (!btn) return;
+    var container=btn.closest('.tag-container'); if (!container) return;
+    btn.parentElement.remove();
+    var tags=container.querySelectorAll('.tag');
+    if (tags.length===0) { var p=container.querySelector('.placeholder-msg'); if(p) p.style.display=''; }
+    updateEnumHidden(container);
+}
+
+function updateEnumHidden(container) {
+    if (!container) return;
+    var hidden=container.querySelector('.field-enum'); if (!hidden) return;
+    var values=[]; container.querySelectorAll('.tag').forEach(function(t){ values.push(t.dataset.val); }); hidden.value=values.join(',');
+}
+
+function removeField(button) {
+    if (!button) return;
+    var row=button.closest('tr'); if (!row) return;
+    var trIndex=row.dataset.index, tbody=row.parentElement; if (!tbody) return;
+    var targetDetailRow=tbody.querySelector('tr.detail-row[data-index="'+trIndex+'"]');
+    row.classList.add('opacity-0','-translate-x-4','transition-all','duration-200');
+    if (targetDetailRow) targetDetailRow.classList.add('opacity-0','-translate-x-4');
+    setTimeout(function(){ row.remove(); if(targetDetailRow) targetDetailRow.remove(); reindexFields(); updateFieldCount(); },200);
+}
+
+function reindexFields() {
+    var rows=document.querySelectorAll('#fieldsTable tbody tr.field-row');
+    rows.forEach(function(row,rowIndex) {
+        row.dataset.index=rowIndex;
+        row.querySelectorAll('[data-field]').forEach(function(input){ input.name='Fields['+rowIndex+'].'+input.dataset.field; });
+        var tbody=row.parentElement;
+        if (tbody) {
+            var detailRows=tbody.querySelectorAll('tr.detail-row'), matchedDetail=detailRows[rowIndex];
+            if (matchedDetail) {
+                matchedDetail.dataset.index=rowIndex;
+                matchedDetail.querySelectorAll('[data-field]').forEach(function(input){ input.name='Fields['+rowIndex+'].'+input.dataset.field; });
+                var tagContainer=matchedDetail.querySelector('.tag-container'); if(tagContainer) tagContainer.dataset.row=rowIndex;
             }
         }
+        updateValidationInputNames(row,rowIndex);
+    });
+    index=rows.length;
+}
 
-        if (enumSettings) enumSettings.classList.add('hidden');
-        if (relationSettings) relationSettings.classList.add('hidden');
-        if (valSettings) valSettings.classList.remove('hidden');
-
-        if (isEnum) {
-            if (enumSettings) enumSettings.classList.remove('hidden');
-            if (valSettings) valSettings.classList.add('hidden');
-            detailRow.classList.remove('hidden');
-            if (detailToggleBtn) {
-                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Options';
-            }
-            var cb = enumSettings && enumSettings.querySelector('.use-common-table-cb');
-            if (cb) onUseCommonTableChange(cb);
-        } else if (isRelation) {
-            if (relationSettings) relationSettings.classList.remove('hidden');
-            if (valSettings) valSettings.classList.add('hidden');
-            detailRow.classList.remove('hidden');
-            if (detailToggleBtn) {
-                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Relation';
-            }
-        } else {
-            if (detailToggleBtn) {
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Validation';
-            }
-        }
-
-        updateValidationInputNames(row);
+function updateValidationInputNames(row, rowIndex) {
+    if (!row) return;
+    if (rowIndex===undefined) {
+        var tbodyEl=row.parentElement; if (!tbodyEl) return;
+        rowIndex=Array.from(tbodyEl.children).filter(function(r){ return r.classList.contains('field-row'); }).indexOf(row);
     }
+    var tbody=row.parentElement; if (!tbody) return;
+    var detailRow=tbody.querySelector('tr.detail-row[data-index="'+row.dataset.index+'"]'); if (!detailRow) return;
+    var typeSelect=row.querySelector('.field-type'); if (!typeSelect) return;
+    var type=typeSelect.value, minInput=detailRow.querySelector('.field-min'), maxInput=detailRow.querySelector('.field-max');
+    var minLabel=detailRow.querySelector('.min-label'), maxLabel=detailRow.querySelector('.max-label');
+    if (!minInput||!maxInput) return;
+    var numeric=type==='int'||type==='decimal', isEnum=type==='enum', isRelation=type==='relation';
+    minInput.removeAttribute('name'); maxInput.removeAttribute('name');
+    minInput.disabled=isEnum||isRelation; maxInput.disabled=isEnum||isRelation;
+    minInput.step='1'; maxInput.step='1';
+    if (type==='string') { minInput.name='Fields['+rowIndex+'].MinLength'; maxInput.name='Fields['+rowIndex+'].MaxLength'; if(minLabel) minLabel.textContent='Min Length'; if(maxLabel) maxLabel.textContent='Max Length'; }
+    else if (numeric) { minInput.name='Fields['+rowIndex+'].MinValue'; maxInput.name='Fields['+rowIndex+'].MaxValue'; if(minLabel) minLabel.textContent='Min Value'; if(maxLabel) maxLabel.textContent='Max Value'; if(type==='decimal'){minInput.step='0.01';maxInput.step='0.01';} }
+    else { if(minLabel) minLabel.textContent='Min Config'; if(maxLabel) maxLabel.textContent='Max Config'; minInput.value=''; maxInput.value=''; }
+}
 
-    function onUseCommonTableChange(cb) {
-        if (!cb) return;
-        var panel = cb.closest('.enum-settings-panel');
-        if (!panel) return;
-        var hint = panel.querySelector('.common-table-hint');
-        if (hint) {
-            if (cb.checked) {
-                hint.classList.remove('hidden');
-            } else {
-                hint.classList.add('hidden');
-            }
-        }
-        var renderToggle = panel.querySelector('.render-type-toggle');
-        if (renderToggle) {
-            if (cb.checked) {
-                renderToggle.classList.add('hidden');
-            } else {
-                renderToggle.classList.remove('hidden');
-            }
-        }
-    }
+/* ══════════════════════════════════
+   INIT
+══════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', function() {
+    renderSidebar();
 
-    function onRelationTableChange(select) {
-        if (!select) return;
-        var row = select.closest('tr.detail-row');
-        if (!row) return;
-        var trIndex = row.dataset.index;
-        var tbody = row.parentElement;
-        if (!tbody) return;
-        var fieldRow = tbody.querySelector('tr.field-row[data-index="' + trIndex + '"]');
-        if (!fieldRow) return;
-        var nameInput = fieldRow.querySelector('input[data-field="Name"]');
-        if (!nameInput) return;
-
-        var hidden = row.querySelector('.field-related-entity');
-        if (hidden) hidden.value = select.value;
-
-        if (select.value && (!nameInput.value || availableTables.indexOf(nameInput.value) !== -1)) {
-            nameInput.value = select.value;
-        }
-    }
-
-    function onRelationSelect() {
-        var select = document.getElementById('relTableSelect');
-        var table = select.value;
-
-        var hiddenContainer = document.getElementById('relationFieldsContainer');
-        var deleteRow = document.getElementById('deleteBehaviorRow');
-        var pivotCard = document.getElementById('pivotCard');
-        var pivotTitle = document.getElementById('pivotTitle');
-        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
-
-        if (!table) {
-            deleteRow.classList.add('hidden');
-            hiddenContainer.innerHTML = '';
-            pivotCard.classList.add('hidden');
-            pivotCard.classList.add('opacity-50');
-            pivotTitle.textContent = 'Pivot';
-            pivotCb.disabled = true;
-            pivotCb.checked = false;
-            return;
-        }
-
-        deleteRow.classList.remove('hidden');
-        pivotCard.classList.remove('hidden');
-        pivotCard.classList.remove('opacity-50');
-        pivotTitle.textContent = table + ' Pivot';
-        pivotCb.disabled = false;
-
-        hiddenContainer.innerHTML = '\
-            <input type="hidden" name="_rel_Name" value="' + table + '" /> \
-            <input type="hidden" name="_rel_IsPivot" value="false" /> \
-            <input type="hidden" name="_rel_DeleteBehavior" value="Cascade" /> \
-        ';
-    }
-
-    function clearRelation() {
-        var select = document.getElementById('relTableSelect');
-        select.value = '';
-        document.getElementById('deleteBehaviorRow').classList.add('hidden');
-        document.getElementById('relationFieldsContainer').innerHTML = '';
-        var pivotCard = document.getElementById('pivotCard');
-        pivotCard.classList.add('hidden');
-        pivotCard.classList.add('opacity-50');
-        document.getElementById('pivotTitle').textContent = 'Pivot';
-        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
-        pivotCb.disabled = true;
-        pivotCb.checked = false;
-    }
-
-    function onDeleteBehaviorChange(radio) {
-        var hc = document.getElementById('relationFieldsContainer');
-        var existing = hc.querySelector('input[name="_rel_DeleteBehavior"]');
-        if (existing) existing.value = radio.value;
-    }
-
-    document.addEventListener('DOMContentLoaded', function () {
-
-        // Sync pivot checkbox -> hidden _rel_IsPivot value
-        document.addEventListener('change', function (e) {
-            if (e.target.classList.contains('relation-pivot-cb')) {
-                var val = e.target.checked ? 'true' : 'false';
-                var hc = document.getElementById('relationFieldsContainer');
-                var existing = hc.querySelector('input[name="_rel_IsPivot"]');
-                if (existing) existing.value = val;
-            }
-        });
-
-        // Toggle relation selector enabled state
-        var toggler = document.querySelector('.toggler-relation');
-        var selector = document.getElementById('relationSelector');
-        if (toggler && selector) {
-            toggler.addEventListener('change', function () {
-                if (toggler.checked) {
-                    selector.classList.remove('opacity-50', 'pointer-events-none');
-                    selector.classList.add('animate-fadeIn');
-                } else {
-                    selector.classList.add('opacity-50', 'pointer-events-none');
-                    selector.classList.remove('animate-fadeIn');
-                    clearRelation();
-                }
-            });
+    document.addEventListener('change', function(e) {
+        if (e.target.classList.contains('relation-pivot-cb')) {
+            var val=e.target.checked?'true':'false';
+            var existing=document.getElementById('relationFieldsContainer').querySelector('input[name="_rel_IsPivot"]');
+            if (existing) existing.value=val;
         }
     });
 
-    /* Enum Option Tag Utilities */
-    function handleAddTagClick(btn) {
-        if (!btn) return;
-        var panel = btn.closest('.enum-settings-panel');
-        if (!panel) return;
-        var input = panel.querySelector('.tag-input');
-        if (input) addOptionTag(input);
-    }
-
-    function addOptionTag(input) {
-        if (!input) return;
-        var value = input.value.trim();
-        if (!value) return;
-
-        if (value.indexOf(',') > -1) {
-            value.split(',').forEach(function(v) { 
-                addOptionTagFromString(v.trim(), input); 
-            });
-            input.value = '';
-            return;
-        }
-
-        addOptionTagFromString(value, input);
-        input.value = '';
-        input.focus();
-    }
-
-    function addOptionTagFromString(value, input) {
-        if (!value || !input) return;
-        var panel = input.closest('.enum-settings-panel');
-        if (!panel) return;
-        var container = panel.querySelector('.tag-container');
-        if (!container) return;
-        
-        var placeholder = container.querySelector('.placeholder-msg');
-        if (placeholder) placeholder.style.display = 'none';
-
-        var existing = container.querySelectorAll('.tag');
-        for (var i = 0; i < existing.length; i++) {
-            if (existing[i].dataset.val.toLowerCase() === value.toLowerCase()) return;
-        }
-
-        var tag = document.createElement('span');
-        tag.className = 'tag inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-semibold text-indigo-600 leading-none';
-        tag.dataset.val = value;
-        tag.innerHTML = value + ' <button type="button" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100/50 w-4 h-4 rounded inline-flex items-center justify-center font-bold text-xs leading-none transition-colors" onclick="removeOptionTag(this)">\u00d7</button>';
-
-        var hiddenInput = container.querySelector('.field-enum');
-        container.insertBefore(tag, hiddenInput);
-        updateEnumHidden(container);
-    }
-
-    function removeOptionTag(btn) {
-        if (!btn) return;
-        var container = btn.closest('.tag-container');
-        if (!container) return;
-        btn.parentElement.remove();
-        
-        var tags = container.querySelectorAll('.tag');
-        if (tags.length === 0) {
-            var placeholder = container.querySelector('.placeholder-msg');
-            if (placeholder) placeholder.style.display = '';
-        }
-        updateEnumHidden(container);
-    }
-
-    function updateEnumHidden(container) {
-        if (!container) return;
-        var hidden = container.querySelector('.field-enum');
-        if (!hidden) return;
-        var tags = container.querySelectorAll('.tag');
-        var values = [];
-        for (var i = 0; i < tags.length; i++) {
-            values.push(tags[i].dataset.val);
-        }
-        hidden.value = values.join(',');
-    }
-
-    function removeField(button) {
-        if (!button) return;
-        var row = button.closest('tr');
-        if (!row) return;
-        var trIndex = row.dataset.index;
-        var tbody = row.parentElement;
-        if (!tbody) return;
-        
-        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        
-        row.classList.add('opacity-0', '-translate-x-4', 'transition-all', 'duration-200');
-        if (targetDetailRow) {
-            targetDetailRow.classList.add('opacity-0', '-translate-x-4');
-        }
-
-        setTimeout(function () { 
-            row.remove(); 
-            if (targetDetailRow) targetDetailRow.remove();
-            reindexFields(); 
-            updateFieldCount(); 
-        }, 200);
-    }
-
-    function reindexFields() {
-        var rows = document.querySelectorAll('#fieldsTable tbody tr.field-row');
-        rows.forEach(function (row, rowIndex) {
-            row.dataset.index = rowIndex;
-            row.querySelectorAll('[data-field]').forEach(function (input) {
-                input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
-            });
-            
-            var tbody = row.parentElement;
-            if (tbody) {
-                var detailRows = tbody.querySelectorAll('tr.detail-row');
-                var matchedDetail = detailRows[rowIndex];
-                if (matchedDetail) {
-                    matchedDetail.dataset.index = rowIndex;
-                    matchedDetail.querySelectorAll('[data-field]').forEach(function (input) {
-                        input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
-                    });
-                    var tagContainer = matchedDetail.querySelector('.tag-container');
-                    if (tagContainer) tagContainer.dataset.row = rowIndex;
-                }
-            }
-
-            updateValidationInputNames(row, rowIndex);
+    var toggler=document.querySelector('.toggler-relation'), selector=document.getElementById('relationSelector');
+    if (toggler&&selector) {
+        toggler.addEventListener('change', function() {
+            if (toggler.checked) { selector.classList.remove('opacity-50','pointer-events-none'); selector.classList.add('animate-fadeIn'); }
+            else { selector.classList.add('opacity-50','pointer-events-none'); selector.classList.remove('animate-fadeIn'); clearRelation(); }
         });
-        index = rows.length;
     }
-
-    function updateValidationInputNames(row, rowIndex) {
-        if (!row) return;
-        if (rowIndex === undefined) {
-            var tbodyEl = row.parentElement;
-            if (!tbodyEl) return;
-            var all = Array.from(tbodyEl.children).filter(function (r) { 
-                return r.classList.contains('field-row'); 
-            });
-            rowIndex = all.indexOf(row);
-        }
-        
-        var tbody = row.parentElement;
-        if (!tbody) return;
-        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + row.dataset.index + '"]');
-        if (!detailRow) return;
-
-        var typeSelect = row.querySelector('.field-type');
-        if (!typeSelect) return;
-        var type = typeSelect.value;
-        
-        var minInput = detailRow.querySelector('.field-min');
-        var maxInput = detailRow.querySelector('.field-max');
-        var minLabel = detailRow.querySelector('.min-label');
-        var maxLabel = detailRow.querySelector('.max-label');
-        
-        if (!minInput || !maxInput) return;
-        
-        var numeric = type === 'int' || type === 'decimal';
-        var isEnum = type === 'enum';
-        var isRelation = type === 'relation';
-
-        minInput.removeAttribute('name');
-        maxInput.removeAttribute('name');
-        minInput.disabled = isEnum || isRelation;
-        maxInput.disabled = isEnum || isRelation;
-        minInput.step = '1';
-        maxInput.step = '1';
-
-        if (type === 'string') {
-            minInput.name = 'Fields[' + rowIndex + '].MinLength';
-            maxInput.name = 'Fields[' + rowIndex + '].MaxLength';
-            if (minLabel) minLabel.textContent = 'Min Length';
-            if (maxLabel) maxLabel.textContent = 'Max Length';
-        } else if (numeric) {
-            minInput.name = 'Fields[' + rowIndex + '].MinValue';
-            maxInput.name = 'Fields[' + rowIndex + '].MaxValue';
-            if (minLabel) minLabel.textContent = 'Min Value';
-            if (maxLabel) maxLabel.textContent = 'Max Value';
-            if (type === 'decimal') { minInput.step = '0.01'; maxInput.step = '0.01'; }
-        } else {
-            if (minLabel) minLabel.textContent = 'Min Config';
-            if (maxLabel) maxLabel.textContent = 'Max Config';
-            minInput.value = '';
-            maxInput.value = '';
-        }
-    }
+});
 </script>
