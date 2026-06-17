@@ -16,7 +16,6 @@ using UserApp.Domain.Messengers;
 using UserApp.Domain.Cars;
 using UserApp.Domain.Notifications;
 
-
 namespace UserApp.Infrastructure.Persistence;
 
 public class AppDbContext : DbContext
@@ -59,6 +58,9 @@ public DbSet<Notification> Notifications => Set<Notification>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // <AUTO-CONFIG-START>
+        // <AUTO-CONFIG-END>
 
         modelBuilder.ApplyConfiguration(new UserConfiguration());
 

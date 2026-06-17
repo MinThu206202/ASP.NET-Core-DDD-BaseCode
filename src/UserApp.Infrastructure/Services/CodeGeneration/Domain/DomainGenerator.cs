@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Text;
 using UserApp.Application.Common.DTOs;
 using UserApp.Infrastructure.Services.CodeGeneration.Shared;
@@ -22,13 +23,16 @@ public class DomainGenerator
         var domainFolder = Path.Combine(_paths.SrcRoot, "UserApp.Domain", $"{name}s");
         _files.EnsureDirectory(domainFolder);
 
+        var navigationUsings = BuildNavigationUsings(fields);
+
         var entityContent = _templates.RenderFile(
             new[] { "Domain", "Templates", "Entity.tpl" },
             new Dictionary<string, string>
             {
                 ["Name"] = name,
                 ["Properties"] = GenerateProperties(fields),
-                ["HasImageInterface"] = hasImage ? ", IHasMedia" : ""
+                ["HasImageInterface"] = hasImage ? ", IHasMedia" : "",
+                ["NavigationUsings"] = navigationUsings
             });
 
         _files.WriteFile(Path.Combine(domainFolder, $"{name}.cs"), entityContent);
@@ -41,6 +45,66 @@ public class DomainGenerator
             });
 
         _files.WriteFile(Path.Combine(domainFolder, $"I{name}Repository.cs"), repositoryContent);
+
+        // Generate configuration if there are non-pivot relation fields
+        var relationFields = fields.Where(f => f.IsRelation && !f.IsPivot).ToList();
+        if (relationFields.Count > 0)
+        {
+            GenerateConfiguration(name, relationFields);
+        }
+    }
+
+    private static string BuildNavigationUsings(List<ModuleFieldDto> fields)
+    {
+        var sb = new StringBuilder();
+        foreach (var field in fields.Where(f => f.IsRelation && !f.IsPivot && !string.IsNullOrWhiteSpace(f.RelatedEntityName)))
+        {
+            sb.AppendLine($"using UserApp.Domain.{field.RelatedEntityName}s;");
+        }
+        return sb.ToString();
+    }
+
+    public void GenerateConfiguration(string entityName, List<ModuleFieldDto> relationFields)
+    {
+        var configFolder = Path.Combine(_paths.SrcRoot, "UserApp.Infrastructure", "Persistence", "Configurations");
+        _files.EnsureDirectory(configFolder);
+
+        var sb = new StringBuilder();
+        sb.AppendLine($@"using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using UserApp.Domain.{entityName}s;
+
+namespace UserApp.Infrastructure.Persistence.Configurations;
+
+public class {entityName}Configuration : IEntityTypeConfiguration<{entityName}>
+{{
+    public void Configure(EntityTypeBuilder<{entityName}> b)
+    {{");
+
+        foreach (var field in relationFields)
+        {
+            var behavior = GetDeleteBehavior(field.DeleteBehavior);
+            sb.AppendLine($@"
+        b.HasOne(x => x.{field.Name})
+            .WithMany()
+            .HasForeignKey(x => x.{field.Name}Id)
+            .OnDelete(DeleteBehavior.{behavior});");
+        }
+
+        sb.AppendLine(@"    }
+}");
+
+        _files.WriteFile(Path.Combine(configFolder, $"{entityName}Configuration.cs"), sb.ToString());
+    }
+
+    private static string GetDeleteBehavior(string? deleteBehavior)
+    {
+        return deleteBehavior switch
+        {
+            "Restrict" => "Restrict",
+            "SetNull" => "SetNull",
+            _ => "Cascade"
+        };
     }
 
     public void GeneratePivot(string moduleName, string relatedEntityName)
@@ -51,14 +115,21 @@ public class DomainGenerator
 
         var entity = $@"using System.ComponentModel.DataAnnotations.Schema;
 using UserApp.Domain.Common;
+using UserApp.Domain.{moduleName}s;
+using UserApp.Domain.{relatedEntityName}s;
 
 namespace UserApp.Domain.{pivotName}s;
 
 [Table(""{moduleName}_{relatedEntityName}"")]
 public class {pivotName} : Entity<Guid>
 {{
-    public Guid {moduleName}_id {{ get; set; }}
-    public Guid {relatedEntityName}_id {{ get; set; }}
+    [Column(""{moduleName}_id"")]
+    public Guid {moduleName}Id {{ get; set; }}
+    public {moduleName} {moduleName} {{ get; set; }}
+
+    [Column(""{relatedEntityName}_id"")]
+    public Guid {relatedEntityName}Id {{ get; set; }}
+    public {relatedEntityName} {relatedEntityName} {{ get; set; }}
 }}";
         _files.WriteFile(Path.Combine(domainFolder, $"{pivotName}.cs"), entity);
     }
@@ -90,10 +161,13 @@ public class {pivotName} : Entity<Guid>
             }
             else if (field.IsRelation && !field.IsPivot)
             {
+                var fkNullable = field.DeleteBehavior == "SetNull" ? "?" : "";
                 sb.AppendLine(
                     $"    [Column(\"{field.Name}_id\")]");
                 sb.AppendLine(
-                    $"    public Guid {field.Name}Id {{ get; set; }}");
+                    $"    public Guid{fkNullable} {field.Name}Id {{ get; set; }}");
+                sb.AppendLine(
+                    $"    public {field.RelatedEntityName} {field.Name} {{ get; set; }}");
             }
             else
             {

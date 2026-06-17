@@ -106,7 +106,7 @@ public class ViewGenerator
             var displayValue = field.IsPivot
                 ? $"@(!string.IsNullOrEmpty(p.{field.Name}Display) ? p.{field.Name}Display : \"None\")"
                 : field.IsRelation
-                    ? $"@p.{field.Name}Name"
+                    ? $"@(!string.IsNullOrEmpty(p.{field.Name}Name) ? p.{field.Name}Name : \"—\")"
                     : field.UseCommonTable
                         ? $"@p.{field.Name}Name"
                         : $"@p.{field.Name}";

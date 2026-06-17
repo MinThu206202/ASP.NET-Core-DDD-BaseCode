@@ -119,50 +119,73 @@
                             </label>
                         </div>
 
-                        <!-- Toggle Card 3: Add Relation -->
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">Add Relation</div>
-                                <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
-                                <input type="hidden" name="HasRelation" value="false" />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-
                     </div>
 
-                    <!-- Relation table selector (shown when toggle is on) -->
-                    <div id="relationSelector" class="mt-4 hidden">
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="flex items-center gap-3 flex-1 min-w-0">
-                                <select id="relTableSelect" onchange="onRelationSelect()" class="w-56 px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-150">
-                                    <option value="">-- Select Related Table --</option>
+                    <!-- Relation Section -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-semibold text-slate-700 mb-3">Relation Configuration</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <!-- Toggle Card: Add Relation -->
+                            <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                                <div class="pr-4">
+                                    <div class="text-base font-semibold text-slate-800">Add Relation</div>
+                                    <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer group">
+                                    <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
+                                    <input type="hidden" name="HasRelation" value="false" />
+                                    <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                </label>
+                            </div>
+
+                            <!-- Related Table Card -->
+                            <div id="relationSelector" class="border border-slate-200/80 rounded-xl bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
+                                <div class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Related Table</div>
+                                <div class="text-xs text-slate-400 mb-3">Link this module to...</div>
+                                <select id="relTableSelect" onchange="onRelationSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-150">
+                                    <option value="">-- Select Table --</option>
                                     @foreach (var t in Model.AvailableTables)
                                     {
                                         <option value="@t">@t</option>
                                     }
                                 </select>
-                                <div id="selectedRelationTag" class="hidden flex items-center gap-3 px-3 py-1.5 bg-white border border-slate-200 rounded-lg">
-                                    <span id="selectedRelationName" class="text-sm font-semibold text-slate-700"></span>
-                                    <label class="relative inline-flex items-center cursor-pointer group">
-                                        <input type="checkbox" class="sr-only peer relation-pivot-cb" />
-                                        <div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[1px] after:left-[1px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3.5 after:w-3.5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                                    </label>
-                                    <span class="text-xs font-medium text-slate-400">Pivot</span>
-                                    <button type="button" onclick="clearRelation()" class="p-0.5 text-slate-300 hover:text-rose-500 transition-colors">
-                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
-                                        </svg>
-                                    </button>
+                                <div id="deleteBehaviorRow" class="hidden mt-4">
+                                    <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Delete Behavior</div>
+                                    <div class="flex flex-wrap gap-4">
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="Cascade" checked
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">CASCADE</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="Restrict"
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">RESTRICT</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="SetNull"
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">SET NULL</span>
+                                        </label>
+                                    </div>
                                 </div>
+                                <div id="pivotCard" class="hidden mt-4 opacity-50">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
+                                            <div class="text-xs text-slate-400 mt-0.5">Enable many-to-many relationship</div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer group shrink-0">
+                                            <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled />
+                                            <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="relationFieldsContainer"></div>
                             </div>
-                            <span class="text-xs text-slate-400 shrink-0 ml-2">Link to another table</span>
                         </div>
-                        <input type="hidden" id="relationFieldsContainer" />
                     </div>
+
                 </div>
             </div>
         </div>
@@ -565,58 +588,80 @@
         var select = document.getElementById('relTableSelect');
         var table = select.value;
 
-        var container = document.getElementById('selectedRelationTag');
-        var nameSpan = document.getElementById('selectedRelationName');
         var hiddenContainer = document.getElementById('relationFieldsContainer');
+        var deleteRow = document.getElementById('deleteBehaviorRow');
+        var pivotCard = document.getElementById('pivotCard');
+        var pivotTitle = document.getElementById('pivotTitle');
+        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
 
         if (!table) {
-            container.classList.add('hidden');
+            deleteRow.classList.add('hidden');
             hiddenContainer.innerHTML = '';
+            pivotCard.classList.add('hidden');
+            pivotCard.classList.add('opacity-50');
+            pivotTitle.textContent = 'Pivot';
+            pivotCb.disabled = true;
+            pivotCb.checked = false;
             return;
         }
 
-        nameSpan.textContent = table;
-        container.classList.remove('hidden');
+        deleteRow.classList.remove('hidden');
+        pivotCard.classList.remove('hidden');
+        pivotCard.classList.remove('opacity-50');
+        pivotTitle.textContent = table + ' Pivot';
+        pivotCb.disabled = false;
 
         hiddenContainer.innerHTML = '\
-            <input type="hidden" name="Fields[1000].Name" value="' + table + '" /> \
-            <input type="hidden" name="Fields[1000].Type" value="relation" /> \
-            <input type="hidden" name="Fields[1000].IsRelation" value="true" /> \
-            <input type="hidden" name="Fields[1000].RelatedEntityName" value="' + table + '" /> \
-            <input type="hidden" name="Fields[1000].IsPivot" value="false" /> \
+            <input type="hidden" name="_rel_Name" value="' + table + '" /> \
+            <input type="hidden" name="_rel_IsPivot" value="false" /> \
+            <input type="hidden" name="_rel_DeleteBehavior" value="Cascade" /> \
         ';
     }
 
     function clearRelation() {
         var select = document.getElementById('relTableSelect');
         select.value = '';
-        document.getElementById('selectedRelationTag').classList.add('hidden');
+        document.getElementById('deleteBehaviorRow').classList.add('hidden');
         document.getElementById('relationFieldsContainer').innerHTML = '';
+        var pivotCard = document.getElementById('pivotCard');
+        pivotCard.classList.add('hidden');
+        pivotCard.classList.add('opacity-50');
+        document.getElementById('pivotTitle').textContent = 'Pivot';
+        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
+        pivotCb.disabled = true;
+        pivotCb.checked = false;
+    }
+
+    function onDeleteBehaviorChange(radio) {
+        var hc = document.getElementById('relationFieldsContainer');
+        var existing = hc.querySelector('input[name="_rel_DeleteBehavior"]');
+        if (existing) existing.value = radio.value;
     }
 
     document.addEventListener('DOMContentLoaded', function () {
 
-        // Sync pivot checkbox -> hidden IsPivot value
+        // Sync pivot checkbox -> hidden _rel_IsPivot value
         document.addEventListener('change', function (e) {
             if (e.target.classList.contains('relation-pivot-cb')) {
                 var val = e.target.checked ? 'true' : 'false';
                 var hc = document.getElementById('relationFieldsContainer');
-                var existing = hc.querySelector('input[name="Fields[1000].IsPivot"]');
+                var existing = hc.querySelector('input[name="_rel_IsPivot"]');
                 if (existing) existing.value = val;
             }
         });
 
-        // Toggle relation selector visibility
+        // Toggle relation selector enabled state
         var toggler = document.querySelector('.toggler-relation');
         var selector = document.getElementById('relationSelector');
         if (toggler && selector) {
             toggler.addEventListener('change', function () {
                 if (toggler.checked) {
-                    selector.classList.remove('hidden');
+                    selector.classList.remove('opacity-50', 'pointer-events-none');
                     selector.classList.add('animate-fadeIn');
                 } else {
-                    selector.classList.add('hidden');
+                    selector.classList.add('opacity-50', 'pointer-events-none');
                     selector.classList.remove('animate-fadeIn');
+                    clearRelation();
                 }
             });
         }

@@ -48,6 +48,7 @@ public class ModuleGeneratorController : Controller
         var moduleName = vm.ModuleName?.Trim();
 
         var fields = vm.Fields
+            .Where(x => !string.IsNullOrWhiteSpace(x.Name))
             .Select(x => new ModuleFieldDto
             {
                 Name = x.Name,
@@ -64,8 +65,26 @@ public class ModuleGeneratorController : Controller
                 EnumRenderAsCheckbox = x.EnumRenderAsCheckbox,
                 IsRelation = x.IsRelation,
                 RelatedEntityName = x.RelatedEntityName,
-                IsPivot = x.IsPivot
+                IsPivot = x.IsPivot,
+                DeleteBehavior = x.DeleteBehavior
             }).ToList();
+
+        // Read relation data from raw form (bypasses List<T> gap-index limitation)
+        var relName = HttpContext.Request.Form["_rel_Name"].FirstOrDefault();
+        if (!string.IsNullOrWhiteSpace(relName))
+        {
+            var relIsPivot = HttpContext.Request.Form["_rel_IsPivot"].FirstOrDefault() == "true";
+            var relDeleteBehavior = HttpContext.Request.Form["_rel_DeleteBehavior"].FirstOrDefault() ?? "Cascade";
+            fields.Add(new ModuleFieldDto
+            {
+                Name = relName,
+                Type = "relation",
+                IsRelation = true,
+                RelatedEntityName = relName,
+                IsPivot = relIsPivot,
+                DeleteBehavior = relDeleteBehavior
+            });
+        }
 
         await _service.GenerateModuleAsync(
             moduleName,
