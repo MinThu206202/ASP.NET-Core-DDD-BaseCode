@@ -493,7 +493,7 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
         return CreatedAtAction(
             nameof(Get),
             new { id = entity.Id },
-            ApiResponse<TViewModel>.Ok(resultVm, "Created successfully")
+            ApiResponse<TViewModel>.Ok(resultVm, await GetFlashMessageAsync("Create"))
         );
     }
 
@@ -517,7 +517,7 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
         return CreatedAtAction(
             nameof(Get),
             new { id = entity.Id },
-            ApiResponse<TViewModel>.Ok(resultVm, "Created successfully")
+            ApiResponse<TViewModel>.Ok(resultVm, await GetFlashMessageAsync("Create"))
         );
     }
 
@@ -548,7 +548,7 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
 
         await SavePivotData(entity, vm);
 
-        return Ok(ApiResponse<object>.Ok(null, "Updated successfully"));
+        return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("Update")));
     }
 
     // ---------------- DELETE ----------------
@@ -563,7 +563,7 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
         await _service.RemoveAsync(entity);
         await _service.SaveAsync();
 
-        return Ok(ApiResponse<object>.Ok(null, "Deleted successfully"));
+        return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("Delete")));
     }
 
     // ---------------- MEDIA UPLOAD ----------------
@@ -607,7 +607,7 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
         }
     }
 
-    return Ok(ApiResponse<object>.Ok(null, "Media uploaded successfully"));
+    return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("UploadMedia")));
 }
 
     // ---------------- GET MEDIA ----------------
@@ -626,7 +626,7 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
 
         return Ok(ApiResponse<List<object>>.Ok(
             mediaList.Select(m => new { m.Id, m.Url, m.OriginalName } as object).ToList(),
-            "Media retrieved successfully"));
+            await GetFlashMessageAsync("GetMedia")));
     }
 
     // ---------------- DELETE MEDIA ----------------
@@ -643,7 +643,23 @@ public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<I
 
         await ms.DeleteAsync(mediaId);
 
-        return Ok(ApiResponse<object>.Ok(null, "Media deleted successfully"));
+        return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("DeleteMedia")));
+    }
+
+    private async Task<string> GetFlashMessageAsync(string action)
+    {
+        var entityName = typeof(TEntity).Name;
+        var service = CommonTableService;
+        if (service != null)
+        {
+            var all = await service.ListAsync(0, 999);
+            var entry = all.FirstOrDefault(x => x.Type == "FlashMessage" && x.Code == $"{entityName}{action}");
+            if (entry != null)
+            {
+                return entry.Name;
+            }
+        }
+        return $"{entityName} {action.ToLower()} successfully";
     }
 
     private static string? ValidateApiFiles(IEnumerable<IFormFile> files)

@@ -22,9 +22,8 @@
                     <tr class="bg-slate-50 border-b border-slate-200">
                         <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Name</th>
 <th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">
-                Milk
+                Status
             </th>
-<th class="text-left px-6 py-4 text-xs font-bold text-slate-500 uppercase">Images</th>
 
                         <th class="text-right px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Actions</th>
                     </tr>
@@ -34,19 +33,7 @@
 {
                     <tr class="hover:bg-indigo-50/40 transition-colors duration-150">
                         <td class="px-6 py-4 font-semibold text-slate-800">@p.Name</td>
-<td class="px-6 py-4 text-slate-600">@p.MilkName</td>
-
-<td class="px-6 py-4">
-    @if (p.ImageUrls.Count > 0)
-    {
-        <div class="flex gap-1.5">
-        @foreach (var img in p.ImageUrls.Take(3))
-        {
-            <img src="@img" class="w-10 h-10 rounded-lg object-cover" />
-        }
-        </div>
-    }
-</td>
+<td class="px-6 py-4 text-slate-600">@p.StatusName</td>
 
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
