@@ -10,12 +10,12 @@ using UserApp.Domain.Roles;
 using UserApp.Domain.Categorys;
 using UserApp.Domain.Payments;
 using UserApp.Domain.CommonTables;
-using UserApp.Domain.Products;
 using UserApp.Domain.Humans;
 using UserApp.Domain.Messengers;
 
 using UserApp.Domain.Cars;
 using UserApp.Domain.Notifications;
+using UserApp.Domain.Products;
 
 namespace UserApp.Infrastructure.Persistence;
 
@@ -45,11 +45,11 @@ public class AppDbContext : DbContext
 public DbSet<Category> Categorys => Set<Category>();
 public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<CommonTable> CommonTables => Set<CommonTable>();
-    public DbSet<Product> Products => Set<Product>();
 public DbSet<Human> Humans => Set<Human>();
 public DbSet<Messenger> Messengers => Set<Messenger>();
 public DbSet<Car> Cars => Set<Car>();
 public DbSet<Notification> Notifications => Set<Notification>();
+public DbSet<Product> Products => Set<Product>();
     // <AUTO-DBSETS-END>
 
 
@@ -61,6 +61,7 @@ public DbSet<Notification> Notifications => Set<Notification>();
         base.OnModelCreating(modelBuilder);
 
         // <AUTO-CONFIG-START>
+        modelBuilder.ApplyConfiguration(new ProductConfiguration());
         // <AUTO-CONFIG-END>
 
         modelBuilder.ApplyConfiguration(new UserConfiguration());

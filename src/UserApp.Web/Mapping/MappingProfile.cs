@@ -13,13 +13,12 @@ using UserApp.Domain.Categorys;
 using UserApp.Domain.Payments;
 using UserApp.Domain.CommonTables;
 using UserApp.Web.ViewModels.CommonTables;
-using UserApp.Domain.Products;
-using UserApp.Web.ViewModels.Products;
 using UserApp.Domain.Humans;
 using UserApp.Domain.Messengers;
 
 using UserApp.Domain.Cars;
 using UserApp.Domain.Notifications;
+using UserApp.Domain.Products;
 
 namespace UserApp.Web.Mapping;
 
@@ -49,8 +48,6 @@ public class MappingProfile : Profile
 
         CreateMap<CommonTable, CommonTableViewModel>();
         CreateMap<CommonTableViewModel, CommonTable>();
-        CreateMap<Product, ProductViewModel>();
-        CreateMap<ProductViewModel, Product>();
         CreateMap<Pap, PapViewModel>();
         CreateMap<PapViewModel, Pap>();
         CreateMap<Milk, MilkViewModel>();
@@ -71,6 +68,8 @@ CreateMap<Car, CarViewModel>();
 CreateMap<CarViewModel, Car>();
 CreateMap<Notification, NotificationViewModel>();
 CreateMap<NotificationViewModel, Notification>();
+CreateMap<Product, ProductViewModel>();
+CreateMap<ProductViewModel, Product>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();

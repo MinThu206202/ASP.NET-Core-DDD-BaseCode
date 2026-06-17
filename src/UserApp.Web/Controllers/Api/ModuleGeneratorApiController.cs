@@ -1,8 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.EntityFrameworkCore;
 using UserApp.Application.Common;
 using UserApp.Application.Common.DTOs;
 using UserApp.Application.Common.Interfaces;
+using UserApp.Infrastructure.Persistence;
 using UserApp.Web.ViewModels.ModuleGenerator;
 
 namespace UserApp.Web.Controllers.Api;
@@ -13,11 +15,26 @@ namespace UserApp.Web.Controllers.Api;
 public class ModuleGeneratorApiController : ControllerBase
 {
     private readonly IModuleGeneratorService _service;
+    private readonly AppDbContext _db;
 
     public ModuleGeneratorApiController(
-        IModuleGeneratorService service)
+        IModuleGeneratorService service,
+        AppDbContext db)
     {
         _service = service;
+        _db = db;
+    }
+
+    [HttpGet("tables")]
+    public ActionResult<ApiResponse<List<string>>> GetTables()
+    {
+        var tables = _db.Model.GetEntityTypes()
+            .Select(e => e.ClrType.Name)
+            .Distinct()
+            .OrderBy(t => t)
+            .ToList();
+
+        return Ok(ApiResponse<List<string>>.Ok(tables, "Tables retrieved successfully"));
     }
 
     [HttpPost]

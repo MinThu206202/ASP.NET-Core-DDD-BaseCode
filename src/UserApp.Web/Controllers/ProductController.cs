@@ -2,7 +2,7 @@ using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
 using UserApp.Application.Products.Interfaces;
 using UserApp.Domain.Products;
-using UserApp.Web.ViewModels.Products;
+using UserApp.Web.ViewModels;
 
 namespace UserApp.Web.Controllers;
 

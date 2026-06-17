@@ -51,9 +51,6 @@ using UserApp.Application.Payments.Interfaces;
 using UserApp.Domain.CommonTables;
 using UserApp.Application.CommonTables;
 using UserApp.Application.CommonTables.Interfaces;
-using UserApp.Domain.Products;
-using UserApp.Application.Products;
-using UserApp.Application.Products.Interfaces;
 using UserApp.Domain.Humans;
 using UserApp.Application.Humans;
 using UserApp.Application.Humans.Interfaces;
@@ -66,6 +63,9 @@ using UserApp.Application.Cars.Interfaces;
 using UserApp.Domain.Notifications;
 using UserApp.Application.Notifications;
 using UserApp.Application.Notifications.Interfaces;
+using UserApp.Domain.Products;
+using UserApp.Application.Products;
+using UserApp.Application.Products.Interfaces;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -105,11 +105,11 @@ builder.Services.AddScoped<ICocoRepository, CocoRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<IPaymentRepository, PaymentRepository>();
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IHumanRepository, HumanRepository>();
 builder.Services.AddScoped<IMessengerRepository, MessengerRepository>();
 builder.Services.AddScoped<ICarRepository, CarRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -131,11 +131,11 @@ builder.Services.AddScoped<ICocoService, CocoService>();
 builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<IPaymentService, PaymentService>();
 builder.Services.AddScoped<ICommonTableService, CommonTableService>();
-builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IHumanService, HumanService>();
 builder.Services.AddScoped<IMessengerService, MessengerService>();
 builder.Services.AddScoped<ICarService, CarService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();

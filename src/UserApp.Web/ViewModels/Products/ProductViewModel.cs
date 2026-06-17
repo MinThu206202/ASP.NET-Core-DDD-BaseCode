@@ -1,26 +1,32 @@
 using System.ComponentModel.DataAnnotations;
 using Microsoft.AspNetCore.Mvc.Rendering;
-
-namespace UserApp.Web.ViewModels.Products;
+using UserApp.Application.Media;
+namespace UserApp.Web.ViewModels;
 
 public class ProductViewModel
 {
     public Guid Id { get; set; }
 
-    [Required(ErrorMessage = "Name is required")]
-    [StringLength(100, MinimumLength = 1, ErrorMessage = "Name must be between 1 and 100 characters")]
+    [Required(ErrorMessage = "Name is required")] 
+    [StringLength(225, MinimumLength = 0, ErrorMessage = "Name length must be between 0 and 225")] 
     public string Name { get; set; } = string.Empty;
 
-    [Required(ErrorMessage = "Status is required")]
-    public string Status { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Price is required")] 
+    public int Price { get; set; }
 
-    public string StatusName { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Description is required")] 
+    [StringLength(500, MinimumLength = 0, ErrorMessage = "Description length must be between 0 and 500")] 
+    public string Description { get; set; } = string.Empty;
 
-    public List<SelectListItem> StatusOptions { get; set; } = [];
+    public int Quantity { get; set; }
 
-    public string Paymet { get; set; } = string.Empty;
+    [Required(ErrorMessage = "Category is required")]
+    public Guid CategoryId { get; set; }
+    public List<SelectListItem> CategoryOptions { get; set; } = [];
+    public string CategoryName { get; set; } = string.Empty;
 
-    public string PaymetName { get; set; } = string.Empty;
 
-    public List<SelectListItem> PaymetOptions { get; set; } = [];
+    public List<string> ImageUrls { get; set; } = [];
+    public List<MediaDto> MediaList { get; set; } = [];
+
 }
