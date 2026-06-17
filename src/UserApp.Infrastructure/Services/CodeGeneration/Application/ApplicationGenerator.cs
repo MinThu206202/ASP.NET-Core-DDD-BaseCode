@@ -42,4 +42,5 @@ public class ApplicationGenerator
         _files.WriteFile(Path.Combine(applicationFolder, $"{name}Service.cs"), serviceContent);
         _files.WriteFile(Path.Combine(interfacesFolder, $"I{name}Service.cs"), interfaceContent);
     }
+
 }

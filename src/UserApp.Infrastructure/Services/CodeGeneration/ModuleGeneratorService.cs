@@ -67,6 +67,21 @@ public class ModuleGeneratorService : IModuleGeneratorService
         _dbContextUpdater.Update(name);
         _programUpdater.Update(name);
 
+        // Register EF Core configuration for relation fields
+        if (fields.Any(f => f.IsRelation && !f.IsPivot))
+            _dbContextUpdater.ApplyConfiguration(name);
+
+        foreach (var field in fields.Where(f => f.IsPivot && !string.IsNullOrWhiteSpace(f.RelatedEntityName)))
+        {
+            var rel = Capitalize(field.RelatedEntityName!);
+            Console.WriteLine($"  Generating pivot table: {name}_{rel}");
+
+            _domain.GeneratePivot(name, rel);
+
+            var pivotName = $"{name}{rel}";
+            _dbContextUpdater.Update(pivotName);
+        }
+
         if (runMigration)
             _migrationRunner.AddMigration(name);
 

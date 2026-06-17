@@ -35,6 +35,7 @@ public class ModuleGeneratorApiController : ControllerBase
                 ApiResponse<object>.Fail("Module name is required"));
 
         var fields = vm.Fields
+            .Where(x => !string.IsNullOrWhiteSpace(x.Name))
             .Select(x => new ModuleFieldDto
             {
                 Name = x.Name,
@@ -47,7 +48,12 @@ public class ModuleGeneratorApiController : ControllerBase
                 MinValue = x.MinValue,
                 MaxValue = x.MaxValue,
                 EnumValues = x.EnumValues,
-                UseCommonTable = x.UseCommonTable
+                UseCommonTable = x.UseCommonTable,
+                EnumRenderAsCheckbox = x.EnumRenderAsCheckbox,
+                IsRelation = x.IsRelation,
+                RelatedEntityName = x.RelatedEntityName,
+                IsPivot = x.IsPivot,
+                DeleteBehavior = x.DeleteBehavior
             })
             .ToList();
 

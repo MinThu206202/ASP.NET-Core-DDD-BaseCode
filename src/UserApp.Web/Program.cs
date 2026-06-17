@@ -60,6 +60,12 @@ using UserApp.Application.Humans.Interfaces;
 using UserApp.Domain.Messengers;
 using UserApp.Application.Messengers;
 using UserApp.Application.Messengers.Interfaces;
+using UserApp.Domain.Cars;
+using UserApp.Application.Cars;
+using UserApp.Application.Cars.Interfaces;
+using UserApp.Domain.Notifications;
+using UserApp.Application.Notifications;
+using UserApp.Application.Notifications.Interfaces;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -102,6 +108,8 @@ builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IHumanRepository, HumanRepository>();
 builder.Services.AddScoped<IMessengerRepository, MessengerRepository>();
+builder.Services.AddScoped<ICarRepository, CarRepository>();
+builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -126,6 +134,8 @@ builder.Services.AddScoped<ICommonTableService, CommonTableService>();
 builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<IHumanService, HumanService>();
 builder.Services.AddScoped<IMessengerService, MessengerService>();
+builder.Services.AddScoped<ICarService, CarService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();

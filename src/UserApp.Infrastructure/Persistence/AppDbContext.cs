@@ -14,6 +14,8 @@ using UserApp.Domain.Products;
 using UserApp.Domain.Humans;
 using UserApp.Domain.Messengers;
 
+using UserApp.Domain.Cars;
+using UserApp.Domain.Notifications;
 
 namespace UserApp.Infrastructure.Persistence;
 
@@ -46,6 +48,8 @@ public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<Product> Products => Set<Product>();
 public DbSet<Human> Humans => Set<Human>();
 public DbSet<Messenger> Messengers => Set<Messenger>();
+public DbSet<Car> Cars => Set<Car>();
+public DbSet<Notification> Notifications => Set<Notification>();
     // <AUTO-DBSETS-END>
 
 
@@ -55,6 +59,9 @@ public DbSet<Messenger> Messengers => Set<Messenger>();
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        // <AUTO-CONFIG-START>
+        // <AUTO-CONFIG-END>
 
         modelBuilder.ApplyConfiguration(new UserConfiguration());
 

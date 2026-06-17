@@ -1,7 +1,10 @@
 @model UserApp.Web.ViewModels.ModuleGenerator.GenerateModuleViewModel
+@using System.Linq
+@using System.Text.Json
 
 @{
     ViewData["Title"] = "Module Designer";
+    var tablesJson = JsonSerializer.Serialize(Model.AvailableTables);
 }
 
 <!-- Google Fonts & Tailwind CSS CDN -->
@@ -24,6 +27,7 @@
     /* Premium micro-interactions and transitions */
     .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
     .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
+    .animate-fadeIn { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
     @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     @@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
     
@@ -116,6 +120,72 @@
                         </div>
 
                     </div>
+
+                    <!-- Relation Section -->
+                    <div class="mt-4">
+                        <label class="block text-sm font-semibold text-slate-700 mb-3">Relation Configuration</label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
+                            <!-- Toggle Card: Add Relation -->
+                            <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
+                                <div class="pr-4">
+                                    <div class="text-base font-semibold text-slate-800">Add Relation</div>
+                                    <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
+                                </div>
+                                <label class="relative inline-flex items-center cursor-pointer group">
+                                    <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
+                                    <input type="hidden" name="HasRelation" value="false" />
+                                    <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                </label>
+                            </div>
+
+                            <!-- Related Table Card -->
+                            <div id="relationSelector" class="border border-slate-200/80 rounded-xl bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
+                                <div class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Related Table</div>
+                                <div class="text-xs text-slate-400 mb-3">Link this module to...</div>
+                                <select id="relTableSelect" onchange="onRelationSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-150">
+                                    <option value="">-- Select Table --</option>
+                                    @foreach (var t in Model.AvailableTables)
+                                    {
+                                        <option value="@t">@t</option>
+                                    }
+                                </select>
+                                <div id="deleteBehaviorRow" class="hidden mt-4">
+                                    <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Delete Behavior</div>
+                                    <div class="flex flex-wrap gap-4">
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="Cascade" checked
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">CASCADE</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="Restrict"
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">RESTRICT</span>
+                                        </label>
+                                        <label class="inline-flex items-center gap-2 cursor-pointer">
+                                            <input type="radio" name="deleteBehavior" value="SetNull"
+                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                            <span class="text-sm text-slate-700">SET NULL</span>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="pivotCard" class="hidden mt-4 opacity-50">
+                                    <div class="flex items-center justify-between">
+                                        <div>
+                                            <div class="text-sm font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
+                                            <div class="text-xs text-slate-400 mt-0.5">Enable many-to-many relationship</div>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer group shrink-0">
+                                            <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled />
+                                            <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                                <div id="relationFieldsContainer"></div>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
         </div>
@@ -124,7 +194,15 @@
         <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 120ms;">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
                 <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
-                <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
+                <div class="flex items-center gap-3">
+                    <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
+                    <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
+                        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                        </svg>
+                        Add Schema Field
+                    </button>
+                </div>
             </div>
             
             <div class="overflow-x-auto custom-scrollbar">
@@ -155,17 +233,6 @@
                     </tbody>
                 </table>
             </div>
-
-            <!-- Footer Toolbar with Action Button -->
-            <div class="px-6 py-3.5 border-t border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <span class="text-sm text-slate-400">Configure parameters dynamically with smart validations.</span>
-                <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
-                    <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
-                    </svg>
-                    Add Schema Field
-                </button>
-            </div>
         </div>
 
         <!-- Submit Context Actions -->
@@ -183,6 +250,7 @@
 
 <script>
     var index = 0;
+    var availableTables = @Html.Raw(tablesJson);
 
     // Image toggle - click any .img-btn
     document.addEventListener('click', function(e) {
@@ -236,6 +304,7 @@
                     <option value="bool">bool</option> \
                     <option value="DateTime">DateTime</option> \
                     <option value="enum">enum</option> \
+                    <option value="relation">relation</option> \
                 </select> \
             </td> \
             <td class="p-3"> \
@@ -295,8 +364,19 @@
                         </div> \
                     </div> \
                     <div class="space-y-3 enum-settings-panel hidden"> \
-                        <div class="border-b border-slate-100 pb-2"> \
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
                             <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
+                            <div class="flex items-center gap-3 render-type-toggle"> \
+                                <span class="text-xs font-medium text-slate-400">Render as</span> \
+                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
+                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="false" checked class="w-3.5 h-3.5 text-indigo-600" /> \
+                                    <span class="text-xs font-semibold text-slate-600">Radio</span> \
+                                </label> \
+                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
+                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="true" class="w-3.5 h-3.5 text-indigo-600" /> \
+                                    <span class="text-xs font-semibold text-slate-600">Checkbox</span> \
+                                </label> \
+                            </div> \
                         </div> \
                         <div class="flex items-center gap-2 mb-2"> \
                             <label class="relative inline-flex items-center cursor-pointer group"> \
@@ -314,15 +394,34 @@
                                 </svg> \
                                 Add \
                             </button> \
-                        </div> \
-                        <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable (Type = ModuleName + FieldName)</div> \
-                        <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
-                            <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
-                            <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
-                        </div> \
+                    </div> \
+                    <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable (Type = ModuleName + FieldName)</div> \
+                    <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
+                        <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
+                        <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
                     </div> \
                 </div> \
-            </td> \
+                <div class="space-y-3 relation-settings-panel hidden"> \
+                    <div class="border-b border-slate-100 pb-2"> \
+                        <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Related Table</span> \
+                    </div> \
+                    <select class="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 relation-table-select" onchange="onRelationTableChange(this)"> \
+                        <option value="">-- Select Related Table --</option> \
+                    </select> \
+                    <input type="hidden" name="Fields[' + index + '].RelatedEntityName" class="field-related-entity" data-field="RelatedEntityName" value="" /> \
+                    <input type="hidden" name="Fields[' + index + '].IsRelation" value="true" data-field="IsRelation" /> \
+                    <div class="flex items-center justify-between bg-indigo-50/60 rounded-xl px-4 py-2.5 border border-indigo-100"> \
+                        <span class="text-sm font-semibold text-slate-700">Pivot Table (Many-to-Many)</span> \
+                        <label class="relative inline-flex items-center cursor-pointer group"> \
+                            <input type="checkbox" name="Fields[' + index + '].IsPivot" value="true" data-field="IsPivot" class="sr-only peer" /> \
+                            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                        </label> \
+                        <input type="hidden" name="Fields[' + index + '].IsPivot" value="false" data-field="IsPivot" /> \
+                    </div> \
+                    <p class="text-xs text-slate-400 italic">When enabled, a junction table with checkboxes (multi-select) will be generated instead of a single dropdown.</p> \
+                </div> \
+            </div> \
+        </td> \
         ';
 
         // Fix: use addEventListener instead of inline onkeydown for reliable tag input
@@ -336,6 +435,17 @@
 
         tbody.appendChild(row);
         tbody.appendChild(detailRow);
+
+        // Populate relation table dropdown
+        var relSelect = detailRow.querySelector('.relation-table-select');
+        if (relSelect) {
+            for (var i = 0; i < availableTables.length; i++) {
+                var opt = document.createElement('option');
+                opt.value = availableTables[i];
+                opt.textContent = availableTables[i];
+                relSelect.appendChild(opt);
+            }
+        }
 
         onTypeChange(row.querySelector('.field-type'));
         index++;
@@ -374,10 +484,15 @@
         if (!detailRow) return;
         
         var isEnum = select.value === 'enum';
-        
+        var isRelation = select.value === 'relation';
+
+        var isRelationInput = detailRow.querySelector('input[data-field="IsRelation"]');
+        if (isRelationInput) isRelationInput.disabled = !isRelation;
+
         var lenInput = row.querySelector('.field-len-input');
         var valSettings = detailRow.querySelector('.validation-settings-panel');
         var enumSettings = detailRow.querySelector('.enum-settings-panel');
+        var relationSettings = detailRow.querySelector('.relation-settings-panel');
         var detailToggleBtn = row.querySelector('.details-toggle-btn');
         
         if (lenInput) {
@@ -393,6 +508,10 @@
             }
         }
 
+        if (enumSettings) enumSettings.classList.add('hidden');
+        if (relationSettings) relationSettings.classList.add('hidden');
+        if (valSettings) valSettings.classList.remove('hidden');
+
         if (isEnum) {
             if (enumSettings) enumSettings.classList.remove('hidden');
             if (valSettings) valSettings.classList.add('hidden');
@@ -402,12 +521,18 @@
                 var span = detailToggleBtn.querySelector('span');
                 if (span) span.textContent = 'Options';
             }
-            // Reset UseCommonTable hint visibility
             var cb = enumSettings && enumSettings.querySelector('.use-common-table-cb');
             if (cb) onUseCommonTableChange(cb);
+        } else if (isRelation) {
+            if (relationSettings) relationSettings.classList.remove('hidden');
+            if (valSettings) valSettings.classList.add('hidden');
+            detailRow.classList.remove('hidden');
+            if (detailToggleBtn) {
+                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
+                var span = detailToggleBtn.querySelector('span');
+                if (span) span.textContent = 'Relation';
+            }
         } else {
-            if (enumSettings) enumSettings.classList.add('hidden');
-            if (valSettings) valSettings.classList.remove('hidden');
             if (detailToggleBtn) {
                 var span = detailToggleBtn.querySelector('span');
                 if (span) span.textContent = 'Validation';
@@ -429,7 +554,118 @@
                 hint.classList.add('hidden');
             }
         }
+        var renderToggle = panel.querySelector('.render-type-toggle');
+        if (renderToggle) {
+            if (cb.checked) {
+                renderToggle.classList.add('hidden');
+            } else {
+                renderToggle.classList.remove('hidden');
+            }
+        }
     }
+
+    function onRelationTableChange(select) {
+        if (!select) return;
+        var row = select.closest('tr.detail-row');
+        if (!row) return;
+        var trIndex = row.dataset.index;
+        var tbody = row.parentElement;
+        if (!tbody) return;
+        var fieldRow = tbody.querySelector('tr.field-row[data-index="' + trIndex + '"]');
+        if (!fieldRow) return;
+        var nameInput = fieldRow.querySelector('input[data-field="Name"]');
+        if (!nameInput) return;
+
+        var hidden = row.querySelector('.field-related-entity');
+        if (hidden) hidden.value = select.value;
+
+        if (select.value && (!nameInput.value || availableTables.indexOf(nameInput.value) !== -1)) {
+            nameInput.value = select.value;
+        }
+    }
+
+    function onRelationSelect() {
+        var select = document.getElementById('relTableSelect');
+        var table = select.value;
+
+        var hiddenContainer = document.getElementById('relationFieldsContainer');
+        var deleteRow = document.getElementById('deleteBehaviorRow');
+        var pivotCard = document.getElementById('pivotCard');
+        var pivotTitle = document.getElementById('pivotTitle');
+        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
+
+        if (!table) {
+            deleteRow.classList.add('hidden');
+            hiddenContainer.innerHTML = '';
+            pivotCard.classList.add('hidden');
+            pivotCard.classList.add('opacity-50');
+            pivotTitle.textContent = 'Pivot';
+            pivotCb.disabled = true;
+            pivotCb.checked = false;
+            return;
+        }
+
+        deleteRow.classList.remove('hidden');
+        pivotCard.classList.remove('hidden');
+        pivotCard.classList.remove('opacity-50');
+        pivotTitle.textContent = table + ' Pivot';
+        pivotCb.disabled = false;
+
+        hiddenContainer.innerHTML = '\
+            <input type="hidden" name="_rel_Name" value="' + table + '" /> \
+            <input type="hidden" name="_rel_IsPivot" value="false" /> \
+            <input type="hidden" name="_rel_DeleteBehavior" value="Cascade" /> \
+        ';
+    }
+
+    function clearRelation() {
+        var select = document.getElementById('relTableSelect');
+        select.value = '';
+        document.getElementById('deleteBehaviorRow').classList.add('hidden');
+        document.getElementById('relationFieldsContainer').innerHTML = '';
+        var pivotCard = document.getElementById('pivotCard');
+        pivotCard.classList.add('hidden');
+        pivotCard.classList.add('opacity-50');
+        document.getElementById('pivotTitle').textContent = 'Pivot';
+        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
+        pivotCb.disabled = true;
+        pivotCb.checked = false;
+    }
+
+    function onDeleteBehaviorChange(radio) {
+        var hc = document.getElementById('relationFieldsContainer');
+        var existing = hc.querySelector('input[name="_rel_DeleteBehavior"]');
+        if (existing) existing.value = radio.value;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+
+        // Sync pivot checkbox -> hidden _rel_IsPivot value
+        document.addEventListener('change', function (e) {
+            if (e.target.classList.contains('relation-pivot-cb')) {
+                var val = e.target.checked ? 'true' : 'false';
+                var hc = document.getElementById('relationFieldsContainer');
+                var existing = hc.querySelector('input[name="_rel_IsPivot"]');
+                if (existing) existing.value = val;
+            }
+        });
+
+        // Toggle relation selector enabled state
+        var toggler = document.querySelector('.toggler-relation');
+        var selector = document.getElementById('relationSelector');
+        if (toggler && selector) {
+            toggler.addEventListener('change', function () {
+                if (toggler.checked) {
+                    selector.classList.remove('opacity-50', 'pointer-events-none');
+                    selector.classList.add('animate-fadeIn');
+                } else {
+                    selector.classList.add('opacity-50', 'pointer-events-none');
+                    selector.classList.remove('animate-fadeIn');
+                    clearRelation();
+                }
+            });
+        }
+    });
 
     /* Enum Option Tag Utilities */
     function handleAddTagClick(btn) {
@@ -588,11 +824,12 @@
         
         var numeric = type === 'int' || type === 'decimal';
         var isEnum = type === 'enum';
+        var isRelation = type === 'relation';
 
         minInput.removeAttribute('name');
         maxInput.removeAttribute('name');
-        minInput.disabled = isEnum;
-        maxInput.disabled = isEnum;
+        minInput.disabled = isEnum || isRelation;
+        maxInput.disabled = isEnum || isRelation;
         minInput.step = '1';
         maxInput.step = '1';
 

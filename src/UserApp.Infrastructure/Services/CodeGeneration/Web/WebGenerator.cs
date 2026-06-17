@@ -108,6 +108,28 @@ public class WebGenerator
                 sb.AppendLine(
                     $"    public string {name} {{ get; set; }} = string.Empty;");
             }
+            else if (field.IsRelation && !field.IsPivot)
+            {
+                var fkNullable = field.DeleteBehavior == "SetNull" ? "?" : "";
+                if (field.DeleteBehavior != "SetNull")
+                    sb.AppendLine(
+                        $"    [Required(ErrorMessage = \"{name} is required\")]");
+                sb.AppendLine(
+                    $"    public Guid{fkNullable} {name}Id {{ get; set; }}");
+                sb.AppendLine(
+                    $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public string {name}Name {{ get; set; }} = string.Empty;");
+            }
+            else if (field.IsPivot)
+            {
+                sb.AppendLine(
+                    $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public List<Guid> Selected{name}Ids {{ get; set; }} = [];");
+                sb.AppendLine(
+                    $"    public string {name}Display {{ get; set; }} = string.Empty;");
+            }
             else
             {
                 var nullable = field.IsNullable ? "?" : string.Empty;
@@ -145,6 +167,9 @@ public class WebGenerator
             || type.Equals("double", StringComparison.OrdinalIgnoreCase)
             || type.Equals("float", StringComparison.OrdinalIgnoreCase)
             || type.Equals("long", StringComparison.OrdinalIgnoreCase);
+
+    private static bool IsBooleanType(string type)
+        => type.Equals("bool", StringComparison.OrdinalIgnoreCase);
 
     private static bool HasStringLengthValidation(ModuleFieldDto field)
         => field.MinLength.HasValue
