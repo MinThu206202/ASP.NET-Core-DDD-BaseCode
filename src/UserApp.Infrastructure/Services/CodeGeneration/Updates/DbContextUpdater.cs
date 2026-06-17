@@ -32,6 +32,18 @@ public class DbContextUpdater
             dbSetLine);
     }
 
+    public void ApplyConfiguration(string name)
+    {
+        var file = Path.Combine(_paths.SrcRoot, "UserApp.Infrastructure", "Persistence", "AppDbContext.cs");
+
+        var configLine = $"        modelBuilder.ApplyConfiguration(new {name}Configuration());";
+
+        InsertIntoBlock(file,
+            "// <AUTO-CONFIG-START>",
+            "// <AUTO-CONFIG-END>",
+            configLine);
+    }
+
     private void EnsureUsing(string filePath, string usingLine)
     {
         var lines = File.ReadAllLines(filePath);

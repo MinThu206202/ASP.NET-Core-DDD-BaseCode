@@ -149,7 +149,9 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
             // Single relation: {Name}Id exists → dropdown
             var idProp = vmType.GetProperty($"{fieldName}Id");
-            if (idProp == null || idProp.PropertyType != typeof(Guid)) continue;
+            if (idProp == null) continue;
+            var idType = idProp.PropertyType;
+            if (idType != typeof(Guid) && idType != typeof(Guid?)) continue;
 
             var entityOptions = await LoadEntityLookupOptions(fieldName);
             prop.SetValue(vm, entityOptions);
@@ -381,7 +383,9 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
 
                 var fieldName = nameProp.Name[..^"Name".Length];
                 var idProp = vmType.GetProperty($"{fieldName}Id");
-                if (idProp == null || idProp.PropertyType != typeof(Guid)) continue;
+                if (idProp == null) continue;
+                var idType = idProp.PropertyType;
+                if (idType != typeof(Guid) && idType != typeof(Guid?)) continue;
 
                 var idValue = idProp.GetValue(item);
                 if (idValue == null || (Guid)idValue == Guid.Empty) continue;
@@ -627,7 +631,15 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         var entity = await _service.GetByIdAsync(id);
         if (entity == null) return NotFound();
 
-        await _service.RemoveAsync(entity);
+        try
+        {
+            await _service.RemoveAsync(entity);
+        }
+        catch (DbUpdateException)
+        {
+            TempData["Error"] = "Cannot delete this record because it is referenced by other records. Remove or update the dependent records first.";
+            return RedirectToAction(nameof(Index));
+        }
 
         await SetFlashMessageAsync("Delete");
         return RedirectToAction(nameof(Index));

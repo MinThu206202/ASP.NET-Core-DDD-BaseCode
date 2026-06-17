@@ -110,10 +110,12 @@ public class WebGenerator
             }
             else if (field.IsRelation && !field.IsPivot)
             {
+                var fkNullable = field.DeleteBehavior == "SetNull" ? "?" : "";
+                if (field.DeleteBehavior != "SetNull")
+                    sb.AppendLine(
+                        $"    [Required(ErrorMessage = \"{name} is required\")]");
                 sb.AppendLine(
-                    $"    [Required(ErrorMessage = \"{name} is required\")]");
-                sb.AppendLine(
-                    $"    public Guid {name}Id {{ get; set; }}");
+                    $"    public Guid{fkNullable} {name}Id {{ get; set; }}");
                 sb.AppendLine(
                     $"    public List<SelectListItem> {name}Options {{ get; set; }} = [];");
                 sb.AppendLine(
