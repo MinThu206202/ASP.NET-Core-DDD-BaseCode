@@ -12,6 +12,7 @@ public class SidebarItemRepository : BaseRepository<SidebarItem>, ISidebarItemRe
     public async Task<List<SidebarItem>> GetActiveAsync()
     {
         return await _set
+            .Include(x => x.Group)
             .Where(x => x.IsActive && x.DeletedAt == null)
             .OrderBy(x => x.DisplayOrder)
             .ToListAsync();

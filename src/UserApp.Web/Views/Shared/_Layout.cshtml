@@ -239,9 +239,9 @@
 <nav class="space-y-1">
 @{
     var sidebarItems = await SidebarService.GetActiveAsync();
-    var nonSystemItems = sidebarItems.Where(x => x.GroupName != "System").ToList();
-    var systemItems = sidebarItems.Where(x => x.GroupName == "System").ToList();
-    var allGroups = nonSystemItems.GroupBy(x => x.GroupName).OrderBy(g => g.Key);
+    var nonSystemItems = sidebarItems.Where(x => x.Group.Name != "System").ToList();
+    var systemItems = sidebarItems.Where(x => x.Group.Name == "System").ToList();
+    var allGroups = nonSystemItems.GroupBy(x => x.Group.Name).OrderBy(g => g.Key);
 
     foreach (var group in allGroups)
     {
@@ -281,7 +281,7 @@
             <!-- System Dropdown (pinned) -->
             @if (systemItems.Any())
             {
-                var systemGroup = systemItems.GroupBy(x => x.GroupName).First();
+                var systemGroup = systemItems.GroupBy(x => x.Group!.Name).First();
                 var sectionId = "system-section";
                 <div class="sidebar-section flex-shrink-0 pt-4 border-t border-slate-800 mt-4">
                     <button onclick="toggleSidebarSection('@sectionId')" class="w-full flex items-center justify-between px-4 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest hover:text-slate-300 transition-colors">

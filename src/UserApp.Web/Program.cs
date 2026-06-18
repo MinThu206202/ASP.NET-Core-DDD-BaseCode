@@ -69,6 +69,9 @@ using UserApp.Application.SidebarItems.Interfaces;
 using UserApp.Domain.Products;
 using UserApp.Application.Products;
 using UserApp.Application.Products.Interfaces;
+using UserApp.Domain.SidebarGroups;
+using UserApp.Application.SidebarGroups;
+using UserApp.Application.SidebarGroups.Interfaces;
 
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
@@ -114,6 +117,7 @@ builder.Services.AddScoped<ICarRepository, CarRepository>();
 builder.Services.AddScoped<INotificationRepository, NotificationRepository>();
 builder.Services.AddScoped<ISidebarItemRepository, SidebarItemRepository>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped<ISidebarGroupRepository, SidebarGroupRepository>();
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -141,6 +145,7 @@ builder.Services.AddScoped<ICarService, CarService>();
 builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddScoped<ISidebarItemService, SidebarItemService>();
 builder.Services.AddScoped<IProductService, ProductService>();
+builder.Services.AddScoped<ISidebarGroupService, SidebarGroupService>();
 // <AUTO-SERVICES-END>
 
 builder.Services.AddScoped<IUserService, UserService>();
@@ -161,6 +166,9 @@ builder.Services.AddScoped<PermissionFilter>();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.AddService<PermissionFilter>();
+}).AddJsonOptions(options =>
+{
+    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "THIS_IS_DEMO_SECRET_KEY_123456";
@@ -236,7 +244,52 @@ using (var scope = app.Services.CreateScope())
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedAdminRolePermissionsAsync(db);
     await SeedFlashMessages(db);
+    await SeedSidebarGroups(db);
     await SeedSidebarItems(db);
+
+    // Create FK if it doesn't exist (must be after SidebarGroups are seeded)
+    await db.Database.ExecuteSqlRawAsync(@"
+        SET @fk_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'SidebarItems' AND CONSTRAINT_NAME = 'FK_SidebarItems_SidebarGroups_GroupId');
+        SET @stmt = IF(@fk_exists = 0,
+            'ALTER TABLE SidebarItems ADD CONSTRAINT FK_SidebarItems_SidebarGroups_GroupId FOREIGN KEY (GroupId) REFERENCES SidebarGroups(Id) ON DELETE CASCADE',
+            'SELECT 1'
+        );
+        PREPARE s FROM @stmt;
+        EXECUTE s;
+        DEALLOCATE PREPARE s;
+    ");
+}
+
+static async Task SeedSidebarGroups(AppDbContext db)
+{
+    var existing = db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>()
+        .Select(x => x.Name)
+        .ToHashSet();
+
+    var groups = new (string name, int order)[]
+    {
+        ("Master Data", 1),
+        ("Commerce", 2),
+        ("Operations", 3),
+        ("Communication", 4),
+        ("AI", 5),
+        ("System", 6),
+    };
+
+    foreach (var (name, order) in groups)
+    {
+        if (existing.Contains(name)) continue;
+
+        db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>().Add(new()
+        {
+            Name = name,
+            DisplayOrder = order,
+            IsActive = true
+        });
+    }
+
+    await db.SaveChangesAsync();
 }
 
 static async Task SeedSidebarItems(AppDbContext db)
@@ -244,6 +297,9 @@ static async Task SeedSidebarItems(AppDbContext db)
     var existing = db.Set<UserApp.Domain.SidebarItems.SidebarItem>()
         .Select(x => x.ControllerName)
         .ToHashSet();
+
+    var groupMap = db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>()
+        .ToDictionary(x => x.Name, x => x.Id);
 
     var items = new (string moduleName, string controllerName, string groupName, int order)[]
     {
@@ -269,11 +325,14 @@ static async Task SeedSidebarItems(AppDbContext db)
     {
         if (existing.Contains(controllerName)) continue;
 
+        if (!groupMap.TryGetValue(groupName, out var groupId))
+            groupId = Guid.Empty;
+
         db.Set<UserApp.Domain.SidebarItems.SidebarItem>().Add(new()
         {
             ModuleName = moduleName,
             ControllerName = controllerName,
-            GroupName = groupName,
+            GroupId = groupId,
             DisplayOrder = order,
             IsActive = true
         });

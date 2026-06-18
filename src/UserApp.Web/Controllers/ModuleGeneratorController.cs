@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using UserApp.Application.Common.Interfaces;
+using UserApp.Application.SidebarGroups.Interfaces;
+using UserApp.Application.SidebarItems.Interfaces;
 using UserApp.Web.ViewModels.ModuleGenerator;
 using UserApp.Application.Common.DTOs;
 using System.Reflection;
@@ -9,25 +11,34 @@ namespace UserApp.Web.Controllers;
 public class ModuleGeneratorController : Controller
 {
     private readonly IModuleGeneratorService _service;
+    private readonly ISidebarGroupService _sidebarGroupService;
+    private readonly ISidebarItemService _sidebarItemService;
     private static readonly HashSet<string> ExcludedTables = new(StringComparer.OrdinalIgnoreCase)
     {
         "CommonTable", "RefreshToken", "Permission", "RolePermission", "UserRole", "Media"
     };
 
-    public ModuleGeneratorController(IModuleGeneratorService service)
+    public ModuleGeneratorController(
+        IModuleGeneratorService service,
+        ISidebarGroupService sidebarGroupService,
+        ISidebarItemService sidebarItemService)
     {
         _service = service;
+        _sidebarGroupService = sidebarGroupService;
+        _sidebarItemService = sidebarItemService;
     }
 
     // =========================
     // GET
     // =========================
     [HttpGet]
-    public IActionResult Index()
+    public async Task<IActionResult> Index()
     {
         var vm = new GenerateModuleViewModel
         {
-            AvailableTables = GetAvailableTables()
+            AvailableTables = GetAvailableTables(),
+            SidebarGroups = await _sidebarGroupService.GetAllOrderedAsync(),
+            SidebarItems = await _sidebarItemService.GetActiveAsync()
         };
         return View(vm);
     }
@@ -42,6 +53,8 @@ public class ModuleGeneratorController : Controller
         if (!ModelState.IsValid)
         {
             vm.AvailableTables = GetAvailableTables();
+            vm.SidebarGroups = await _sidebarGroupService.GetAllOrderedAsync();
+            vm.SidebarItems = await _sidebarItemService.GetActiveAsync();
             return View(vm);
         }
 
@@ -86,13 +99,21 @@ public class ModuleGeneratorController : Controller
             });
         }
 
+        // Determine sidebar group when sidebar is enabled
+        Guid? sidebarGroupId = null;
+        if (vm.EnableSidebar)
+        {
+            var groups = await _sidebarGroupService.GetAllOrderedAsync();
+            sidebarGroupId = groups.FirstOrDefault()?.Id;
+        }
+
         await _service.GenerateModuleAsync(
             moduleName,
             fields,
             vm.RunMigration,
             vm.HasImage,
             vm.RunDbUpdate,
-            vm.SidebarGroup
+            sidebarGroupId
         );
 
         TempData["Success"] = $"{moduleName} module generated successfully!";

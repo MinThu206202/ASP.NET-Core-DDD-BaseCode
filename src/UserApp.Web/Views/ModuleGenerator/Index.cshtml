@@ -1,286 +1,1138 @@
 @model UserApp.Web.ViewModels.ModuleGenerator.GenerateModuleViewModel
 @using System.Linq
 @using System.Text.Json
+@using System.Text.Json.Serialization
 
 @{
     ViewData["Title"] = "Module Designer";
     var tablesJson = JsonSerializer.Serialize(Model.AvailableTables);
+    var jsonOpts = new JsonSerializerOptions { PropertyNamingPolicy = JsonNamingPolicy.CamelCase };
+    var groupsJson = JsonSerializer.Serialize(Model.SidebarGroups.Select(g => new { g.Id, g.Name, g.DisplayOrder, g.IconSvg }), jsonOpts);
+    var itemsJson = JsonSerializer.Serialize(Model.SidebarItems.Select(i => new { i.Id, i.ModuleName, i.ControllerName, i.GroupId, GroupName = i.Group?.Name, i.DisplayOrder, i.IconSvg }), jsonOpts);
 }
 
-<!-- Google Fonts & Tailwind CSS CDN -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Lato:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700&display=swap" rel="stylesheet">
 <script src="https://cdn.tailwindcss.com"></script>
 
-<script>
-    tailwind.config = {
-        theme: {
-            extend: {
-                fontFamily: { sans: ['Inter', 'sans-serif'] }
-            }
-        }
-    }
-</script>
-
 <style>
-    /* Premium micro-interactions and transitions */
+    body { font-family: 'Lato', sans-serif; }
+    .sidebar-children { display: none; }
+    .sidebar-children.open { display: block; }
     .fade-in { animation: fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    .animate-fadeIn { animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-    @@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-    @@keyframes slideUp { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-    
-    .custom-scrollbar::-webkit-scrollbar { height: 6px; }
+    @@keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
     .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
     .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    #ctx-menu {
+        position: fixed; z-index: 1000; background: #1e293b; border: 1px solid #334155;
+        border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); padding: 4px;
+        min-width: 180px; display: none; overflow: hidden;
+    }
+    #ctx-menu .ctx-item {
+        padding: 7px 12px; font-size: 13px; color: #e2e8f0; cursor: pointer;
+        border-radius: 4px; display: flex; align-items: center; gap: 8px; transition: background 0.1s;
+    }
+    #ctx-menu .ctx-item:hover { background: #6366f1; color: white; }
+    #ctx-menu .ctx-item svg { width: 14px; height: 14px; opacity: 0.7; flex-shrink: 0; }
+    #ctx-menu .ctx-divider { height: 1px; background: #334155; margin: 4px 8px; }
+    #ctx-menu .ctx-item.danger:hover { background: #ef4444; }
+
+    #modal-backdrop {
+        position: fixed; inset: 0; z-index: 1001; background: rgba(0,0,0,0.5);
+        display: none; align-items: center; justify-content: center; backdrop-filter: blur(2px);
+    }
+    #modal-backdrop.show { display: flex; }
+    #modal-box {
+        background: white; border-radius: 12px; box-shadow: 0 16px 48px rgba(0,0,0,0.2);
+        width: 400px; max-width: 90vw; padding: 24px;
+        animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    #modal-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 16px; }
+    #modal-body input {
+        width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px;
+        font-size: 14px; color: #1e293b; outline: none; transition: border-color 0.15s;
+    }
+    #modal-body input:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+    #modal-footer { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
+    .modal-btn { padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; border: none; }
+    .modal-btn-cancel { background: #f1f5f9; color: #475569; }
+    .modal-btn-cancel:hover { background: #e2e8f0; }
+    .modal-btn-confirm { background: #6366f1; color: white; }
+    .modal-btn-confirm:hover { background: #4f46e5; }
+    .modal-btn-danger { background: #ef4444; color: white; }
+    .modal-btn-danger:hover { background: #dc2626; }
+
+    #toast-container {
+        position: fixed; bottom: 24px; right: 24px; z-index: 2000;
+        display: flex; flex-direction: column; gap: 8px; pointer-events: none;
+    }
+    .toast {
+        padding: 12px 20px; border-radius: 8px; font-size: 13px; font-weight: 500;
+        color: white; box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        animation: toastIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        pointer-events: auto;
+    }
+    .toast.success { background: #10b981; }
+    .toast.error { background: #ef4444; }
+    @@keyframes toastIn { from { opacity: 0; transform: translateX(24px); } to { opacity: 1; transform: translateX(0); } }
+
+    .search-area input {
+        padding: 6px 10px; border-radius: 6px; border: 1px solid #334155;
+        background: rgba(255,255,255,0.04); color: #e2e8f0; font-size: 12px;
+        outline: none; width: 100%; transition: border-color 0.2s;
+    }
+    .search-area input:focus { border-color: #6366f1; }
+    .search-area input::placeholder { color: #64748b; }
+
+    .input-base {
+        width: 100%; padding: 9px 14px; border: 1px solid #e2e8f0; border-radius: 8px;
+        font-size: 14px; font-weight: 500; color: #1e293b; background: white;
+        outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-base:focus { border-color: #6366f1; box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+    .input-label { display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+
+    .field-row:hover { background: #f8fafc; }
+    .detail-row.hidden { display: none; }
+    .tag { display:inline-flex;align-items:center;gap:4px;padding:3px 8px 3px 10px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:6px;font-size:12px;font-weight:600;color:#4f46e5;line-height:1 }
+    .tag button { color:#a5b4fc;cursor:pointer;border:none;background:transparent;padding:0;width:16px;height:16px;display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;border-radius:3px;transition:all 0.1s }
+    .tag button:hover { color:#4338ca;background:rgba(99,102,241,0.1) }
+    .tag-container { display:flex;flex-wrap:wrap;gap:4px;padding:8px;background:white;border:1px solid #e2e8f0;border-radius:8px;min-height:36px;align-items:center }
+    .tag-container .placeholder-msg { font-size:12px;color:#94a3b8 }
+
+    .sidebar-section-btn {
+        width: 100%; display: flex; align-items: center; justify-content: space-between;
+        padding: 6px 12px; font-size: 10px; font-weight: 700; color: #64748b;
+        text-transform: uppercase; letter-spacing: 0.1em;
+        transition: color 0.2s; border-radius: 6px; background: transparent; border: none; cursor: pointer;
+    }
+    .sidebar-section[draggable="true"] { cursor: grab; user-select: none; }
+    .sidebar-section[draggable="true"]:active { cursor: grabbing; }
+    .sidebar-section-btn:hover { color: #cbd5e1; background: rgba(255,255,255,0.04); }
+    .sidebar-section-btn svg { width: 12px; height: 12px; transition: transform 0.2s; flex-shrink: 0; }
+
+    .sidebar-item-link {
+        display: flex; align-items: center; gap: 8px; padding: 5px 12px 5px 12px;
+        border-radius: 6px; font-size: 13px; font-weight: 600; color: #94a3b8;
+        transition: all 0.15s; cursor: grab; text-decoration: none; user-select: none;
+    }
+    .sidebar-item-link:active { cursor: grabbing; }
+    .sidebar-item-link:hover { background: rgba(255,255,255,0.06); color: #e2e8f0; }
+    .sidebar-item-link svg { width: 16px; height: 16px; flex-shrink: 0; color: #64748b; transition: color 0.15s; }
+    .sidebar-item-link:hover svg { color: #818cf8; }
+    .sidebar-item-link { border-top: 2px solid transparent; }
+    .sidebar-item-link .item-actions { display: none; gap: 2px; margin-left: auto; }
+    .sidebar-item-link:hover .item-actions { display: flex; }
+    .sidebar-item-link .item-actions button {
+        padding: 2px; border-radius: 4px; border: none; background: transparent;
+        color: #64748b; cursor: pointer; transition: all 0.15s;
+        display: flex; align-items: center; justify-content: center;
+    }
+    .sidebar-item-link .item-actions button:hover { color: #e2e8f0; background: rgba(255,255,255,0.08); }
+    .sidebar-item-link .item-actions svg { width: 13px; height: 13px; }
+
+    .folder-count { font-size: 10px; color: #475569; margin-left: auto; padding-right: 4px; }
 </style>
 
-<div class="fade-in max-w-5xl mx-auto px-4 py-8 antialiased">
-    
-    <!-- Title Header Block -->
-    <div class="flex items-center gap-4 mb-8">
-        <div class="w-12 h-12 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
+<div id="toast-container"></div>
+
+<!-- Context Menu -->
+<div id="ctx-menu">
+    <div class="ctx-item" data-action="add-module" onclick="ctxAction('add-module')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        Add Module Here
+    </div>
+    <div class="ctx-item" data-action="rename" onclick="ctxAction('rename')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg>
+        Rename
+    </div>
+    <div class="ctx-divider"></div>
+    <div class="ctx-item danger" data-action="delete" onclick="ctxAction('delete')">
+        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg>
+        Delete
+    </div>
+</div>
+
+<!-- Modal -->
+<div id="modal-backdrop">
+    <div id="modal-box">
+        <div id="modal-title">New Folder</div>
+        <div id="modal-body">
+            <p id="modal-msg" style="display:none;font-size:14px;color:#64748b"></p>
+            <input id="modal-input" type="text" placeholder="Enter name..." />
+        </div>
+        <div id="modal-footer">
+            <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="modal-btn modal-btn-confirm" onclick="confirmModal()">Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- Page Content -->
+<div class="fade-in">
+
+    <!-- Title Header -->
+    <div class="flex items-center gap-4 mb-6">
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 shadow-sm">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.75" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.066 2.573c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.573 1.066c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.066-2.573c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/>
                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
             </svg>
         </div>
         <div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Module Designer</h1>
-            <p class="text-base text-slate-500 mt-0.5">Configure model parameters and programmatically compile application components</p>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">Module Designer</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Configure model parameters and generate application components</p>
         </div>
     </div>
 
-    <form method="post" class="space-y-6">
-        @Html.AntiForgeryToken()
+    <!-- Two-column layout: sidebar preview + form -->
+    <div class="flex gap-6 items-start">
 
-        <!-- Global Settings Card -->
-        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 50ms;">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50">
-                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Global Settings</h2>
-            </div>
-            
-            <div class="p-6 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Module Name Field -->
-                    <div>
-                        <label asp-for="ModuleName" class="block text-sm font-semibold text-slate-700 mb-2">Module Name</label>
-                        <input asp-for="ModuleName" placeholder="e.g., ProductCatalog"
-                               class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200" />
+        <!-- Left: Sidebar Preview matching _Layout design, hidden by default -->
+        <div class="w-72 shrink-0 bg-slate-900 text-slate-300 rounded-xl overflow-hidden border border-slate-800 shadow-xl sticky top-4 hidden" id="sidebarPreviewPanel">
+            <div class="flex flex-col h-full" style="max-height:calc(100vh - 200px)">
+                <!-- Header -->
+                <div class="px-5 py-4 border-b border-slate-800 flex items-center gap-3 shrink-0">
+                    <div class="p-1.5 bg-indigo-600 rounded-lg text-white">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                        </svg>
                     </div>
-
-                    <!-- Sidebar Group -->
-                    <div>
-                        <label asp-for="SidebarGroup" class="block text-sm font-semibold text-slate-700 mb-2">Sidebar Group</label>
-                        <select asp-for="SidebarGroup" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-base font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-200">
-                            <option value="">-- None (No Sidebar) --</option>
-                            <option value="Master Data">Master Data</option>
-                            <option value="Commerce">Commerce</option>
-                            <option value="Operations">Operations</option>
-                            <option value="Communication">Communication</option>
-                            <option value="AI">AI</option>
-                            <option value="System">System</option>
-                        </select>
-                    </div>
-
-                    <!-- Image Radio Buttons -->
-                    <div>
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Image Attachments</label>
-                        <div class="grid grid-cols-2 gap-3">
-                            <button type="button" data-value="true" class="img-btn selected flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-indigo-500 bg-indigo-50/40 text-indigo-700">
-                                <span class="w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0"></span>
-                                Include Image Support
-                            </button>
-                            <button type="button" data-value="false" class="img-btn flex items-center gap-3 px-4 py-2.5 border-2 rounded-xl cursor-pointer text-sm font-semibold select-none transition-all duration-150 border-slate-200 bg-white text-slate-600 hover:border-slate-300">
-                                <span class="w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0"></span>
-                                No Images
-                            </button>
-                            <input type="hidden" asp-for="HasImage" id="HasImage" value="true" />
-                        </div>
+                    <span class="text-sm font-black tracking-wider text-white">UserApp Suite</span>
+                    <div class="ml-auto flex gap-1">
+                        <button onclick="showNewFolderModal()" class="p-1 rounded text-slate-500 hover:text-indigo-400 hover:bg-slate-800 transition-all" title="New Folder">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </button>
+                        <button onclick="refreshSidebarData()" class="p-1 rounded text-slate-500 hover:text-indigo-400 hover:bg-slate-800 transition-all" title="Refresh">
+                            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182"/></svg>
+                        </button>
                     </div>
                 </div>
 
-                <!-- Database Lifecycle Configurations -->
-                <div class="pt-2">
-                    <label class="block text-sm font-semibold text-slate-700 mb-3">Database Lifecycle Actions</label>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        
-                        <!-- Toggle Card 1: Run Migration -->
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">Run Migration</div>
-                                <div class="text-sm text-slate-400 mt-0.5">Scaffold corresponding entity state context migrations.</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input asp-for="RunMigration" type="checkbox" value="true" class="sr-only peer" />
-                                <input type="hidden" name="RunMigration" value="false" />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-
-                        <!-- Toggle Card 2: Update Database -->
-                        <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                            <div class="pr-4">
-                                <div class="text-base font-semibold text-slate-800">Update Database</div>
-                                <div class="text-sm text-slate-400 mt-0.5">Directly apply newly discovered pending migrations to target schema context.</div>
-                            </div>
-                            <label class="relative inline-flex items-center cursor-pointer group">
-                                <input asp-for="RunDbUpdate" type="checkbox" value="true" class="sr-only peer" />
-                                <input type="hidden" name="RunDbUpdate" value="false" />
-                                <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                            </label>
-                        </div>
-
-                    </div>
-
-                    <!-- Relation Section -->
-                    <div class="mt-4">
-                        <label class="block text-sm font-semibold text-slate-700 mb-3">Relation Configuration</label>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
-                            <!-- Toggle Card: Add Relation -->
-                            <div class="flex items-center justify-between p-4 border border-slate-200/80 rounded-xl bg-slate-50/30 hover:bg-slate-50/60 transition-colors duration-150">
-                                <div class="pr-4">
-                                    <div class="text-base font-semibold text-slate-800">Add Relation</div>
-                                    <div class="text-sm text-slate-400 mt-0.5">Link to another table (creates Guid ref + dropdown UI).</div>
-                                </div>
-                                <label class="relative inline-flex items-center cursor-pointer group">
-                                    <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
-                                    <input type="hidden" name="HasRelation" value="false" />
-                                    <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                                </label>
-                            </div>
-
-                            <!-- Related Table Card -->
-                            <div id="relationSelector" class="border border-slate-200/80 rounded-xl bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
-                                <div class="text-sm font-bold text-slate-600 uppercase tracking-wider mb-3">Related Table</div>
-                                <div class="text-xs text-slate-400 mb-3">Link this module to...</div>
-                                <select id="relTableSelect" onchange="onRelationSelect()" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 transition-all duration-150">
-                                    <option value="">-- Select Table --</option>
-                                    @foreach (var t in Model.AvailableTables)
-                                    {
-                                        <option value="@t">@t</option>
-                                    }
-                                </select>
-                                <div id="deleteBehaviorRow" class="hidden mt-4">
-                                    <div class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wider">Delete Behavior</div>
-                                    <div class="flex flex-wrap gap-4">
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="Cascade" checked
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">CASCADE</span>
-                                        </label>
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="Restrict"
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">RESTRICT</span>
-                                        </label>
-                                        <label class="inline-flex items-center gap-2 cursor-pointer">
-                                            <input type="radio" name="deleteBehavior" value="SetNull"
-                                                   onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
-                                            <span class="text-sm text-slate-700">SET NULL</span>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="pivotCard" class="hidden mt-4 opacity-50">
-                                    <div class="flex items-center justify-between">
-                                        <div>
-                                            <div class="text-sm font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
-                                            <div class="text-xs text-slate-400 mt-0.5">Enable many-to-many relationship</div>
-                                        </div>
-                                        <label class="relative inline-flex items-center cursor-pointer group shrink-0">
-                                            <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled />
-                                            <div class="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
-                                        </label>
-                                    </div>
-                                </div>
-                                <div id="relationFieldsContainer"></div>
-                            </div>
-                        </div>
-                    </div>
-
+                <!-- Search area -->
+                <div class="search-area px-4 py-2 border-b border-slate-800 shrink-0">
+                    <input type="text" id="sidebarSearch" oninput="filterSidebar(this.value)" placeholder="Search modules..." />
                 </div>
-            </div>
-        </div>
 
-        <!-- Schema Fields Setup Card -->
-        <div class="slide-up bg-white border border-slate-200/80 rounded-2xl shadow-sm overflow-hidden" style="animation-delay: 120ms;">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
-                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
-                <div class="flex items-center gap-3">
-                    <span class="text-sm font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
-                    <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
-                        <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <!-- Sidebar content -->
+                <div class="flex-1 overflow-y-auto py-2 custom-scrollbar" id="sidebarPreviewContent">
+                    <div class="text-center text-slate-600 text-sm py-8" id="sidebarEmptyMsg">
+                        No groups yet. Click + to create one.
+                    </div>
+                </div>
+
+                <!-- Live module preview while typing -->
+                <div id="sidebarPreviewNew" class="hidden px-4 py-2 border-t border-indigo-800/40 bg-indigo-900/20 shrink-0" draggable="true">
+                    <div class="flex items-center gap-2">
+                        <svg class="w-4 h-4 text-indigo-400 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
                         </svg>
-                        Add Schema Field
-                    </button>
+                        <span id="sidebarPreviewName" class="text-sm font-semibold text-indigo-300 truncate"></span>
+                        <span class="text-[9px] text-indigo-500 uppercase tracking-wider ml-auto shrink-0">pending</span>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="px-4 py-2 border-t border-slate-800 flex items-center justify-between text-[10px] text-slate-600 shrink-0">
+                    <span id="sidebarStats">0 items</span>
+                    <button onclick="expandAllSections()" class="text-slate-600 hover:text-slate-400 transition-colors">Expand All</button>
                 </div>
             </div>
-            
-            <div class="overflow-x-auto custom-scrollbar">
-                <table class="w-full border-collapse" id="fieldsTable">
-                    <thead>
-                        <tr class="border-b border-slate-100 bg-slate-50/30 text-xs font-bold text-slate-400 uppercase tracking-wider text-left">
-                            <th class="p-3.5 pl-6 w-[35%]">Field Name</th>
-                            <th class="p-3.5 w-[25%]">Data Type</th>
-                            <th class="p-3.5 w-[15%]">Length</th>
-                            <th class="p-3.5 text-center w-[15%]">Nullable</th>
-                            <th class="p-3.5 pr-6 w-[10%] text-right">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody class="divide-y divide-slate-100">
-                        <tr id="mgEmptyRow">
-                            <td colspan="5" class="p-12 text-center text-slate-400">
-                                <div class="flex flex-col items-center justify-center max-w-sm mx-auto">
-                                    <div class="p-3 bg-slate-50 rounded-xl text-slate-400 border border-slate-100 mb-3">
-                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
-                                        </svg>
-                                    </div>
-                                    <p class="text-base font-semibold text-slate-800">No layout components defined</p>
-                                    <p class="text-sm text-slate-400 mt-1">Initialize compilation by tracking structural layout attributes mapping directly to target DB states.</p>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+        </div>
+
+        <!-- Right: Form -->
+        <div class="flex-1 min-w-0">
+
+            <div class="flex items-center gap-3 mb-4">
+                <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Configuration</h2>
             </div>
-        </div>
 
-        <!-- Submit Context Actions -->
-        <div class="slide-up flex justify-end pt-2" style="animation-delay: 180ms;">
-            <button type="submit" class="inline-flex items-center gap-2 px-6 py-2.5 text-base font-semibold text-white bg-indigo-600 border border-indigo-700/50 rounded-xl shadow-sm hover:bg-indigo-700 active:scale-[0.98] hover:shadow-md transition-all duration-200">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-                </svg>
-                Generate Module Architecture
-            </button>
-        </div>
+            <form method="post" id="generateForm">
+                @Html.AntiForgeryToken()
+                <input type="hidden" asp-for="EnableSidebar" value="true" />
 
-    </form>
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden mb-4">
+                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/50">
+                        <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Global Settings</h2>
+                    </div>
+                    <div class="p-5 space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <label class="input-label" asp-for="ModuleName">Module Name</label>
+                                <input asp-for="ModuleName" id="moduleNameInput" class="input-base" placeholder="e.g., ProductCatalog" />
+                            </div>
+                            <div>
+                                <label class="input-label">Sidebar</label>
+                                <div class="flex items-center justify-between p-3 border border-slate-200/80 rounded-lg bg-slate-50/30 h-full">
+                                    <div class="pr-2">
+                                        <div class="text-sm font-semibold text-slate-800">Show Sidebar</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">Preview groups &amp; modules</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input type="checkbox" class="sr-only peer" id="sidebarToggle" checked onchange="toggleSidebarPreview()" />
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="input-label">Image Attachments</label>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <button type="button" data-value="true" class="img-btn selected flex items-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-150 border-indigo-500 bg-indigo-50/40 text-indigo-700">
+                                        <span class="w-4 h-4 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0"></span>
+                                        Include Image
+                                    </button>
+                                    <button type="button" data-value="false" class="img-btn flex items-center gap-2 px-3 py-2 border-2 rounded-lg cursor-pointer text-sm font-semibold transition-all duration-150 border-slate-200 bg-white text-slate-600 hover:border-slate-300">
+                                        <span class="w-4 h-4 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0"></span>
+                                        No Images
+                                    </button>
+                                    <input type="hidden" asp-for="HasImage" id="HasImage" value="true" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="input-label" style="margin-bottom:8px">Database Lifecycle Actions</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div class="flex items-center justify-between p-3 border border-slate-200/80 rounded-lg bg-slate-50/30">
+                                    <div class="pr-3">
+                                        <div class="text-sm font-semibold text-slate-800">Run Migration</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">Scaffold EF Core migrations</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input asp-for="RunMigration" type="checkbox" value="true" class="sr-only peer" />
+                                        <input type="hidden" name="RunMigration" value="false" />
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between p-3 border border-slate-200/80 rounded-lg bg-slate-50/30">
+                                    <div class="pr-3">
+                                        <div class="text-sm font-semibold text-slate-800">Update Database</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">Apply migrations to database</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input asp-for="RunDbUpdate" type="checkbox" value="true" class="sr-only peer" />
+                                        <input type="hidden" name="RunDbUpdate" value="false" />
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="input-label" style="margin-bottom:8px">Relation Configuration</label>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 items-start">
+                                <div class="flex items-center justify-between p-3 border border-slate-200/80 rounded-lg bg-slate-50/30">
+                                    <div class="pr-3">
+                                        <div class="text-sm font-semibold text-slate-800">Add Relation</div>
+                                        <div class="text-xs text-slate-400 mt-0.5">Link to another table</div>
+                                    </div>
+                                    <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                        <input asp-for="HasRelation" type="checkbox" value="true" class="sr-only peer toggler-relation" />
+                                        <input type="hidden" name="HasRelation" value="false" />
+                                        <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                    </label>
+                                </div>
+                                <div id="relationSelector" class="border border-slate-200/80 rounded-lg bg-slate-50/30 p-4 opacity-50 pointer-events-none transition-all duration-150">
+                                    <div class="text-xs font-bold text-slate-600 uppercase tracking-wider mb-2">Related Table</div>
+                                    <select id="relTableSelect" onchange="onRelationSelect()" class="input-base mb-3">
+                                        <option value="">-- Select Table --</option>
+                                        @foreach (var t in Model.AvailableTables)
+                                        {
+                                            <option value="@t">@t</option>
+                                        }
+                                    </select>
+                                    <div id="deleteBehaviorRow" class="hidden mb-3">
+                                        <div class="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Delete Behavior</div>
+                                        <div class="flex gap-3">
+                                            <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-700 font-medium">
+                                                <input type="radio" name="deleteBehavior" value="Cascade" checked onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                                CASCADE
+                                            </label>
+                                            <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-700 font-medium">
+                                                <input type="radio" name="deleteBehavior" value="Restrict" onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                                RESTRICT
+                                            </label>
+                                            <label class="inline-flex items-center gap-1.5 cursor-pointer text-xs text-slate-700 font-medium">
+                                                <input type="radio" name="deleteBehavior" value="SetNull" onchange="onDeleteBehaviorChange(this)" class="text-indigo-600" />
+                                                SET NULL
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div id="pivotCard" class="hidden opacity-50">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <div class="text-xs font-bold text-slate-600 uppercase tracking-wider" id="pivotTitle">Pivot</div>
+                                                <div class="text-[10px] text-slate-400 mt-0.5">Many-to-many</div>
+                                            </div>
+                                            <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                                <input type="checkbox" class="sr-only peer relation-pivot-cb" disabled />
+                                                <div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div>
+                                            </label>
+                                        </div>
+                                    </div>
+                                    <div id="relationFieldsContainer"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Schema Fields -->
+                <div class="bg-white border border-slate-200/80 rounded-xl shadow-sm overflow-hidden mb-4">
+                    <div class="px-5 py-3 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+                        <h2 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Module Attributes Scaffold</h2>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs font-semibold text-slate-500 bg-slate-200/60 px-2.5 py-0.5 rounded-full" id="mgFieldCount">0 fields</span>
+                            <button type="button" onclick="addField()" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 border border-indigo-200 rounded-lg hover:bg-indigo-100/85 active:scale-95 transition-all duration-150">
+                                <svg class="w-3.5 h-3.5 stroke-[2.5]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                                Add Schema Field
+                            </button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto custom-scrollbar">
+                        <table class="w-full border-collapse" id="fieldsTable">
+                            <thead>
+                                <tr class="border-b border-slate-100 bg-slate-50/30 text-[10px] font-bold text-slate-400 uppercase tracking-wider text-left">
+                                    <th class="p-3 pl-5 w-[35%]">Field Name</th>
+                                    <th class="p-3 w-[25%]">Data Type</th>
+                                    <th class="p-3 w-[15%]">Length</th>
+                                    <th class="p-3 text-center w-[15%]">Nullable</th>
+                                    <th class="p-3 pr-5 w-[10%] text-right">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-slate-100">
+                                <tr id="mgEmptyRow">
+                                    <td colspan="5" class="p-10 text-center text-slate-400">
+                                        <div class="max-w-xs mx-auto">
+                                            <div class="p-2 bg-slate-50 rounded-lg border border-slate-100 inline-block mb-2">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                                            </div>
+                                            <p class="text-sm font-semibold text-slate-700">No schema fields defined</p>
+                                            <p class="text-xs text-slate-400 mt-1">Add fields to define the module's data structure.</p>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Buttons -->
+                <div class="flex justify-end gap-3">
+                    <button type="button" onclick="saveCurrentModuleToSidebar()" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 active:scale-[0.98] transition-all duration-150">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"/></svg>
+                        Save to Explorer
+                    </button>
+                    <button type="submit" class="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-semibold text-white bg-indigo-600 border border-indigo-700/50 rounded-lg shadow-sm hover:bg-indigo-700 active:scale-[0.98] hover:shadow-md transition-all duration-150">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+                        Generate Module Architecture
+                    </button>
+                </div>
+
+            </form>
+        </div>
+    </div>
 </div>
 
 <script>
+    // ========================================================================
+    // INIT
+    // ========================================================================
     var index = 0;
     var availableTables = @Html.Raw(tablesJson);
+    var sidebarGroups = @Html.Raw(groupsJson);
+    var sidebarItems = @Html.Raw(itemsJson);
+    var sidebarData = { groups: [] };
+    var ctxTargetId = null;
+    var ctxTargetType = null;
+    var dragData = null;
+    var modalCallback = null;
 
-    // Image toggle - click any .img-btn
+    function buildSidebarData() {
+        var data = { groups: [] };
+        var sorted = sidebarGroups.slice().sort(function(a, b) { return a.displayOrder - b.displayOrder; });
+        sorted.forEach(function(g) {
+            var group = { id: g.id, name: g.name, iconSvg: g.iconSvg || '', modules: [] };
+            var items = sidebarItems.filter(function(i) { return i.groupId === g.id; });
+            items.sort(function(a, b) { return a.displayOrder - b.displayOrder; });
+            items.forEach(function(item) {
+                group.modules.push({ id: item.id, name: item.moduleName, controllerName: item.controllerName, iconSvg: item.iconSvg || '' });
+            });
+            data.groups.push(group);
+        });
+
+        // Orphan items whose group was deleted
+        var groupIds = data.groups.map(function(g) { return g.id; });
+        sidebarItems.forEach(function(item) {
+            if (groupIds.indexOf(item.groupId) === -1) {
+                data.groups.push({
+                    id: item.groupId,
+                    name: item.groupName || 'Unknown',
+                    iconSvg: '',
+                    modules: [{ id: item.id, name: item.moduleName, controllerName: item.controllerName, iconSvg: item.iconSvg || '' }]
+                });
+                groupIds.push(item.groupId);
+            }
+        });
+
+        sidebarData = data;
+    }
+
+    // ========================================================================
+    // SIDEBAR RENDER (matches _Layout.cshtml design)
+    // ========================================================================
+    function renderSidebar() {
+        var container = document.getElementById('sidebarPreviewContent');
+        var emptyMsg = document.getElementById('sidebarEmptyMsg');
+        var stats = document.getElementById('sidebarStats');
+
+        if (!sidebarData.groups || sidebarData.groups.length === 0) {
+            container.innerHTML = '<div class="text-center text-slate-600 text-sm py-8">No groups yet. Click + to create one.</div>';
+            if (stats) stats.textContent = '0 items';
+            return;
+        }
+
+        var totalItems = 0;
+        var html = '';
+
+        sidebarData.groups.forEach(function(group) {
+            var sectionId = 'mg-' + group.name.toLowerCase().replace(/\\s+/g, '-') + '-section';
+            totalItems += group.modules.length;
+
+            html += '<div class="sidebar-section" draggable="true" data-group-id="' + group.id + '" data-group-name="' + escHtml(group.name) + '">';
+            html += '<button onclick="toggleSection(\'' + sectionId + '\')" class="sidebar-section-btn" oncontextmenu="showCtxMenu(event, \'' + group.id + '\', \'group\')">';
+            html +=   '<div class="flex items-center gap-2 overflow-hidden">';
+            html +=     '<svg class="w-3 h-3 shrink-0" id="chev-' + sectionId + '" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>';
+            html +=     '<span class="truncate">' + escHtml(group.name) + '</span>';
+            html +=   '</div>';
+            html +=   '<div class="flex items-center gap-1 shrink-0">';
+            html +=     '<span class="folder-count">' + group.modules.length + '</span>';
+            html +=   '</div>';
+            html += '</button>';
+            html += '<div id="' + sectionId + '" class="sidebar-children">';
+
+            if (group.modules.length === 0) {
+                html += '<div class="text-[10px] text-slate-600 italic px-4 py-1.5">Empty group</div>';
+            } else {
+                group.modules.forEach(function(mod) {
+                    html += '<div class="sidebar-item-link" draggable="true" data-module-id="' + mod.id + '" data-group="' + group.id + '" data-controller="' + escHtml(mod.controllerName) + '" oncontextmenu="showCtxMenu(event, \'' + mod.id + '\', \'module\')">';
+                    if (mod.iconSvg) {
+                        html += mod.iconSvg;
+                    } else {
+                        html += '<svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>';
+                    }
+                    html += '<span class="flex-1 truncate">' + escHtml(mod.name) + '</span>';
+                    html += '<div class="item-actions">';
+                    html +=   '<button onclick="event.stopPropagation();showRenameModal(\'' + mod.id + '\', \'module\')" title="Rename"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125"/></svg></button>';
+                    html +=   '<button onclick="event.stopPropagation();showDeleteModal(\'' + mod.id + '\', \'module\')" title="Delete"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"/></svg></button>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+            }
+
+            html += '</div></div>';
+        });
+
+        container.innerHTML = html;
+        if (stats) stats.textContent = sidebarData.groups.length + ' groups, ' + totalItems + ' items';
+
+        // Restore section states
+        document.querySelectorAll('#sidebarPreviewContent .sidebar-section').forEach(function(section) {
+            var btn = section.querySelector('button');
+            if (btn) {
+                var match = btn.getAttribute('onclick') && btn.getAttribute('onclick').match(/'([^']+)'/);
+                if (match) {
+                    var id = match[1];
+                    var state = localStorage.getItem('mg-sidebarSection_' + id);
+                    if (state !== 'closed') {
+                        var div = document.getElementById(id);
+                        var chev = document.getElementById('chev-' + id);
+                        if (div) div.classList.add('open');
+                        if (chev) chev.style.transform = 'rotate(180deg)';
+                    }
+                }
+            }
+        });
+
+    }
+ 
+    function toggleSection(id) {
+        var section = document.getElementById(id);
+        var chev = document.getElementById('chev-' + id);
+        if (section) {
+            var isOpen = section.classList.toggle('open');
+            if (chev) chev.style.transform = isOpen ? 'rotate(180deg)' : 'rotate(0deg)';
+            localStorage.setItem('mg-sidebarSection_' + id, isOpen ? 'open' : 'closed');
+        }
+    }
+
+    function expandAllSections() {
+        sidebarData.groups.forEach(function(g) {
+            var id = 'mg-' + g.name.toLowerCase().replace(/\\s+/g, '-') + '-section';
+            var section = document.getElementById(id);
+            var chev = document.getElementById('chev-' + id);
+            if (section) { section.classList.add('open'); localStorage.setItem('mg-sidebarSection_' + id, 'open'); }
+            if (chev) chev.style.transform = 'rotate(180deg)';
+        });
+    }
+
+    function toggleSidebarPreview() {
+        var panel = document.getElementById('sidebarPreviewPanel');
+        var toggle = document.getElementById('sidebarToggle');
+        if (toggle && !toggle.checked) {
+            panel.classList.add('hidden');
+        } else {
+            panel.classList.remove('hidden');
+        }
+    }
+
+    function filterSidebar(query) {
+        var items = document.querySelectorAll('#sidebarPreviewContent .sidebar-item-link');
+        var sections = document.querySelectorAll('#sidebarPreviewContent .sidebar-section');
+        query = query.toLowerCase().trim();
+        items.forEach(function(item) {
+            var name = item.querySelector('span')?.textContent?.toLowerCase() || '';
+            item.style.display = (!query || name.indexOf(query) > -1) ? '' : 'none';
+        });
+        sections.forEach(function(section) {
+            var visibleItems = section.querySelectorAll('.sidebar-item-link[style*="display: none"]');
+            var allItems = section.querySelectorAll('.sidebar-item-link');
+            section.style.display = (allItems.length === 0 || visibleItems.length < allItems.length) ? '' : 'none';
+        });
+    }
+
+    function escHtml(str) {
+        var d = document.createElement('div');
+        d.appendChild(document.createTextNode(str));
+        return d.innerHTML;
+    }
+
+    // ========================================================================
+    // CONTEXT MENU
+    // ========================================================================
+    function showCtxMenu(e, id, type) {
+        e.preventDefault();
+        ctxTargetId = id;
+        ctxTargetType = type;
+        var menu = document.getElementById('ctx-menu');
+        var items = menu.querySelectorAll('.ctx-item');
+        items.forEach(function(item) {
+            var action = item.getAttribute('data-action');
+            if (type === 'group' && action === 'add-module') { item.style.display = ''; }
+            else if (type === 'module' && action === 'add-module') { item.style.display = 'none'; }
+            else { item.style.display = ''; }
+        });
+        menu.style.display = 'block';
+        menu.style.left = Math.min(e.clientX, window.innerWidth - 200) + 'px';
+        menu.style.top = Math.min(e.clientY, window.innerHeight - 140) + 'px';
+    }
+
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#ctx-menu')) document.getElementById('ctx-menu').style.display = 'none';
+    });
+    document.addEventListener('contextmenu', function(e) {
+        if (!e.target.closest('#sidebarPreviewContent')) document.getElementById('ctx-menu').style.display = 'none';
+    });
+
+    function ctxAction(action) {
+        document.getElementById('ctx-menu').style.display = 'none';
+        if (!ctxTargetId) return;
+        if (action === 'add-module') { showAddModuleModal(ctxTargetId); }
+        else if (action === 'rename') { showRenameModal(ctxTargetId, ctxTargetType); }
+        else if (action === 'delete') { showDeleteModal(ctxTargetId, ctxTargetType); }
+    }
+
+    // ========================================================================
+    // MODAL
+    // ========================================================================
+    function showModal(title, placeholder, callback) {
+        document.getElementById('modal-title').textContent = title;
+        var input = document.getElementById('modal-input');
+        input.value = '';
+        input.placeholder = placeholder || 'Enter name...';
+        input.style.display = '';
+        modalCallback = callback;
+        document.getElementById('modal-footer').innerHTML = 
+            '<button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>' +
+            '<button class="modal-btn modal-btn-confirm" onclick="confirmModal()">Confirm</button>';
+        document.getElementById('modal-backdrop').classList.add('show');
+        setTimeout(function() { input.focus(); }, 100);
+    }
+
+    function closeModal() {
+        document.getElementById('modal-backdrop').classList.remove('show');
+        modalCallback = null;
+        resetModal();
+    }
+
+    function confirmModal() {
+        if (modalCallback) modalCallback(document.getElementById('modal-input').value.trim());
+        closeModal();
+    }
+
+    document.getElementById('modal-input').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') confirmModal();
+        if (e.key === 'Escape') closeModal();
+    });
+    document.getElementById('modal-backdrop').addEventListener('click', function(e) {
+        if (e.target === this) closeModal();
+    });
+
+    // ========================================================================
+    // GROUP CRUD
+    // ========================================================================
+    function showNewFolderModal() {
+        showModal('New Folder', 'Folder name (e.g., Analytics)', function(name) {
+            if (!name) return showToast('Folder name is required', 'error');
+            apiCreateGroup(name);
+        });
+    }
+
+    function showRenameModal(id, type) {
+        var name = '';
+        if (type === 'group') {
+            var g = sidebarData.groups.find(function(x) { return x.id === id; });
+            if (g) name = g.name;
+        } else {
+            for (var i = 0; i < sidebarData.groups.length; i++) {
+                for (var j = 0; j < sidebarData.groups[i].modules.length; j++) {
+                    if (sidebarData.groups[i].modules[j].id === id) name = sidebarData.groups[i].modules[j].name;
+                }
+            }
+        }
+        var label = type === 'group' ? 'Folder name' : 'Module name';
+        showModal('Rename ' + (type === 'group' ? 'Folder' : 'Module'), label, function(newName) {
+            if (!newName) return showToast('Name is required', 'error');
+            if (type === 'group') apiRenameGroup(id, newName);
+            else apiRenameModule(id, newName);
+        });
+        document.getElementById('modal-input').value = name;
+    }
+
+    function showDeleteModal(id, type) {
+        document.getElementById('modal-title').textContent = 'Delete ' + (type === 'group' ? 'Folder' : 'Module') + '?';
+        document.getElementById('modal-input').style.display = 'none';
+        var msg = document.getElementById('modal-msg');
+        msg.textContent = 'Are you sure you want to delete this ' + (type === 'group' ? 'folder' : 'module') + '?';
+        msg.style.display = '';
+        document.getElementById('modal-footer').innerHTML = 
+            '<button class="modal-btn modal-btn-cancel" onclick="closeModal()">Cancel</button>' +
+            '<button class="modal-btn modal-btn-danger" onclick="confirmDelete()">Delete</button>';
+        document.getElementById('modal-backdrop').classList.add('show');
+    }
+
+    function confirmDelete() {
+        if (ctxTargetType === 'group') apiDeleteGroup(ctxTargetId);
+        else apiDeleteModule(ctxTargetId);
+        closeModal();
+    }
+
+    function resetModal() {
+        var msg = document.getElementById('modal-msg');
+        if (msg) msg.style.display = 'none';
+        var input = document.getElementById('modal-input');
+        if (input) input.style.display = '';
+    }
+
+    // ========================================================================
+    // API CALLS
+    // ========================================================================
+    function getToken() {
+        var t = document.querySelector('input[name="__RequestVerificationToken"]');
+        return t ? t.value : '';
+    }
+
+    function apiCreateGroup(name) {
+        fetch('/api/sidebar-groups', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify({ name: name, displayOrder: sidebarData.groups.length + 1 })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error creating folder', 'error');
+            showToast('Folder "' + name + '" created', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error creating folder', 'error'); });
+    }
+
+    function apiRenameGroup(id, newName) {
+        fetch('/api/sidebar-groups/' + id, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify({ name: newName, displayOrder: 1 })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error renaming folder', 'error');
+            showToast('Folder renamed', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error renaming folder', 'error'); });
+    }
+
+    function apiDeleteGroup(id) {
+        fetch('/api/sidebar-groups/' + id, {
+            method: 'DELETE', headers: { 'RequestVerificationToken': getToken() }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error deleting folder', 'error');
+            showToast('Folder deleted', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error deleting folder', 'error'); });
+    }
+
+    function showAddModuleModal(groupId) {
+        showModal('Add Module', 'Module name (e.g., Product)', function(name) {
+            if (!name) return showToast('Module name is required', 'error');
+            var group = sidebarData.groups.find(function(g) { return g.id === groupId; });
+            if (!group) return showToast('Folder not found', 'error');
+            apiAddModule(groupId, name);
+        });
+    }
+
+    function apiAddModule(groupId, moduleName) {
+        fetch('/api/sidebar-items', {
+            method: 'POST', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify({ moduleName: moduleName, groupId: groupId, displayOrder: 10 })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error adding module', 'error');
+            showToast('"' + moduleName + '" added', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error adding module', 'error'); });
+    }
+
+    function apiRenameModule(id, newName) {
+        fetch('/api/sidebar-items/' + id, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+            body: JSON.stringify({ moduleName: newName, displayOrder: 1 })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error renaming module', 'error');
+            showToast('Module renamed', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error renaming module', 'error'); });
+    }
+
+    function apiDeleteModule(id) {
+        fetch('/api/sidebar-items/' + id, {
+            method: 'DELETE', headers: { 'RequestVerificationToken': getToken() }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(d) {
+            if (d.success === false) return showToast(d.message || 'Error deleting module', 'error');
+            showToast('Module deleted', 'success');
+            refreshSidebarData();
+        })
+        .catch(function() { showToast('Error deleting module', 'error'); });
+    }
+
+    function refreshSidebarData() {
+        Promise.all([
+            fetch('/api/sidebar-groups').then(function(r) { return r.json(); }),
+            fetch('/api/sidebar-items').then(function(r) { return r.json(); })
+        ])
+        .then(function(results) {
+            var gd = results[0], id = results[1];
+            if (gd.success === false || id.success === false) return;
+            sidebarGroups = gd.data || gd || [];
+            sidebarItems = id.data || id || [];
+            buildSidebarData();
+            renderSidebar();
+            syncAllToLayoutSidebar();
+        })
+        .catch(function() { showToast('Failed to refresh sidebar', 'error'); });
+    }
+
+    // ========================================================================
+    // SAVE TO EXPLORER
+    // ========================================================================
+    function saveCurrentModuleToSidebar() {
+        var moduleName = document.getElementById('moduleNameInput').value.trim();
+        if (!moduleName) return showToast('Please enter a module name first', 'error');
+
+        if (sidebarData.groups.length === 0) return showToast('Create a folder first before saving', 'error');
+
+        for (var i = 0; i < sidebarData.groups.length; i++) {
+            for (var j = 0; j < sidebarData.groups[i].modules.length; j++) {
+                if (sidebarData.groups[i].modules[j].name.toLowerCase() === moduleName.toLowerCase()) {
+                    return showToast('"' + moduleName + '" already exists', 'info');
+                }
+            }
+        }
+
+        // Auto-show sidebar
+        var toggle = document.getElementById('sidebarToggle');
+        if (toggle && !toggle.checked) {
+            toggle.checked = true;
+            toggleSidebarPreview();
+        }
+
+        // Hide live preview
+        var preview = document.getElementById('sidebarPreviewNew');
+        if (preview) preview.classList.add('hidden');
+
+        var group = sidebarData.groups[0];
+        apiAddModule(group.id, moduleName);
+    }
+
+    // ========================================================================
+    // DRAG & DROP (delegated — works across DOM re-renders)
+    // ========================================================================
+    function clearDragHighlights() {
+        document.querySelectorAll('#sidebarPreviewContent .sidebar-children').forEach(function(el) { el.style.background = ''; });
+        document.querySelectorAll('#sidebarPreviewContent .sidebar-section').forEach(function(el) { el.style.borderTop = ''; });
+        document.querySelectorAll('#sidebarPreviewContent .sidebar-item-link').forEach(function(el) { el.style.borderTop = ''; });
+    }
+
+    document.addEventListener('dragstart', function(e) {
+        var item = e.target.closest('#sidebarPreviewContent .sidebar-item-link[draggable]');
+        if (item) {
+            dragData = { type: 'module', id: item.getAttribute('data-module-id'), group: item.getAttribute('data-group') };
+            item.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragData.id);
+            return;
+        }
+        var section = e.target.closest('#sidebarPreviewContent .sidebar-section[draggable]');
+        if (section) {
+            dragData = { type: 'group', id: section.getAttribute('data-group-id'), name: section.getAttribute('data-group-name') };
+            section.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragData.id);
+            return;
+        }
+        var preview = e.target.closest('#sidebarPreviewNew[draggable]');
+        if (preview) {
+            var name = document.getElementById('moduleNameInput');
+            if (!name || !name.value.trim()) return;
+            dragData = { type: 'new-module', name: name.value.trim() };
+            preview.style.opacity = '0.4';
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', dragData.name);
+        }
+    });
+
+    document.addEventListener('dragend', function(e) {
+        var el = e.target.closest('.sidebar-item-link, .sidebar-section, #sidebarPreviewNew');
+        if (el) el.style.opacity = '';
+        dragData = null;
+        clearDragHighlights();
+    });
+
+    document.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        if (!dragData) return;
+        clearDragHighlights();
+        if (dragData.type === 'module' || dragData.type === 'new-module') {
+            var children = e.target.closest('#sidebarPreviewContent .sidebar-children');
+            if (children) children.style.background = 'rgba(99,102,241,0.06)';
+            var modEl = e.target.closest('#sidebarPreviewContent .sidebar-item-link');
+            if (modEl && dragData.type === 'module' && modEl.getAttribute('data-module-id') !== dragData.id) {
+                modEl.style.borderTop = '2px solid #6366f1';
+            }
+        } else if (dragData.type === 'group') {
+            var section = e.target.closest('#sidebarPreviewContent .sidebar-section');
+            if (section && section.getAttribute('data-group-id') !== dragData.id) {
+                section.style.borderTop = '2px solid #6366f1';
+            }
+        }
+    });
+
+    document.addEventListener('drop', function(e) {
+        e.preventDefault();
+        clearDragHighlights();
+        if (!dragData) return;
+
+        if (dragData.type === 'new-module') {
+            var children = e.target.closest('#sidebarPreviewContent .sidebar-children');
+            if (!children) return;
+            var section = children.closest('.sidebar-section');
+            var targetGroupId = section ? section.getAttribute('data-group-id') : null;
+            var targetGroup = sidebarData.groups.find(function(g) { return g.id === targetGroupId; });
+            if (!targetGroup) return showToast('Target folder not found', 'error');
+            // Check for duplicates
+            for (var i = 0; i < targetGroup.modules.length; i++) {
+                if (targetGroup.modules[i].name.toLowerCase() === dragData.name.toLowerCase()) {
+                    return showToast('"' + dragData.name + '" already exists in folder', 'info');
+                }
+            }
+            var preview = document.getElementById('sidebarPreviewNew');
+            if (preview) preview.classList.add('hidden');
+            apiAddModule(targetGroup.id, dragData.name);
+            return;
+        }
+
+        if (dragData.type === 'module') {
+            var children = e.target.closest('#sidebarPreviewContent .sidebar-children');
+            var modEl = e.target.closest('#sidebarPreviewContent .sidebar-item-link');
+            if (!children) return;
+
+            var section = children.closest('.sidebar-section');
+            var targetGroupId = section ? section.getAttribute('data-group-id') : null;
+            var sourceGroup = sidebarData.groups.find(function(g) { return g.id === dragData.group; });
+            var targetGroup = sidebarData.groups.find(function(g) { return g.id === targetGroupId; });
+            if (!sourceGroup || !targetGroup) return;
+
+            var modIdx = -1;
+            for (var i = 0; i < sourceGroup.modules.length; i++) {
+                if (sourceGroup.modules[i].id === dragData.id) { modIdx = i; break; }
+            }
+            if (modIdx === -1) return;
+            var modData = sourceGroup.modules[modIdx];
+
+            sourceGroup.modules.splice(modIdx, 1);
+
+            // Determine insert position: before the hovered module, or at end
+            if (modEl) {
+                var targetModId = modEl.getAttribute('data-module-id');
+                var insertIdx = -1;
+                for (var i = 0; i < targetGroup.modules.length; i++) {
+                    if (targetGroup.modules[i].id === targetModId) { insertIdx = i; break; }
+                }
+                if (insertIdx > -1) targetGroup.modules.splice(insertIdx, 0, modData);
+                else targetGroup.modules.push(modData);
+            } else {
+                targetGroup.modules.push(modData);
+            }
+
+            var updates = collectUpdates();
+            fetch('/api/sidebar-items/reorder', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+                body: JSON.stringify({ items: updates })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success === false) showToast('Error saving reorder', 'error');
+                else refreshSidebarData();
+            })
+            .catch(function() { showToast('Error saving reorder', 'error'); });
+
+        } else if (dragData.type === 'group') {
+            var section = e.target.closest('#sidebarPreviewContent .sidebar-section');
+            if (!section) return;
+            var targetId = section.getAttribute('data-group-id');
+            if (dragData.id === targetId) return;
+
+            var fromIdx = -1, toIdx = -1;
+            sidebarData.groups.forEach(function(g, idx) {
+                if (g.id === dragData.id) fromIdx = idx;
+                if (g.id === targetId) toIdx = idx;
+            });
+            if (fromIdx === -1 || toIdx === -1) return;
+
+            var moved = sidebarData.groups.splice(fromIdx, 1)[0];
+            sidebarData.groups.splice(toIdx, 0, moved);
+
+            var reorderData = sidebarData.groups.map(function(g, idx) {
+                return { id: g.id, displayOrder: (idx + 1) * 10 };
+            });
+            fetch('/api/sidebar-items/reorder-groups', {
+                method: 'PUT', headers: { 'Content-Type': 'application/json', 'RequestVerificationToken': getToken() },
+                body: JSON.stringify({ groups: reorderData })
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(d) {
+                if (d.success === false) showToast('Error saving group order', 'error');
+                else refreshSidebarData();
+            })
+            .catch(function() { showToast('Error saving group order', 'error'); });
+        }
+    });
+
+    function collectUpdates() {
+        var updates = [];
+        sidebarData.groups.forEach(function(g) {
+            g.modules.forEach(function(m, idx) {
+                updates.push({ id: m.id, groupId: g.id, displayOrder: (idx + 1) * 10 });
+            });
+        });
+        return updates;
+    }
+
+    // Sync Module Generator sidebar data to the _Layout sidebar DOM
+    function syncAllToLayoutSidebar() {
+        sidebarData.groups.forEach(function(g) {
+            var sectionId = g.name.toLowerCase().replace(/\\s+/g, '-') + '-section';
+            var children = document.getElementById(sectionId);
+            if (!children) return;
+            children.innerHTML = '';
+            g.modules.forEach(function(mod) {
+                var a = document.createElement('a');
+                a.href = '/' + mod.controllerName + '/Index';
+                a.className = 'flex items-center px-4 py-2 rounded-lg text-sm font-semibold tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white';
+                if (mod.iconSvg) {
+                    a.innerHTML = mod.iconSvg;
+                } else {
+                    a.innerHTML = '<svg class="w-4 h-4 mr-3 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>';
+                }
+                a.appendChild(document.createTextNode(' ' + mod.name));
+                children.appendChild(a);
+            });
+            // Restore section open/closed state
+            var state = localStorage.getItem('sidebarSection_' + sectionId);
+            if (state !== 'closed') {
+                children.classList.add('open');
+                var chev = document.getElementById('chev-' + sectionId);
+                if (chev) chev.style.transform = 'rotate(180deg)';
+            } else {
+                children.classList.remove('open');
+                var chev = document.getElementById('chev-' + sectionId);
+                if (chev) chev.style.transform = 'rotate(0deg)';
+            }
+        });
+    }
+
+    // ========================================================================
+    // TOAST
+    // ========================================================================
+    function showToast(message, type) {
+        type = type || 'info';
+        var container = document.getElementById('toast-container');
+        var toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        container.appendChild(toast);
+        setTimeout(function() {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(24px)';
+            toast.style.transition = 'all 0.3s';
+            setTimeout(function() { toast.remove(); }, 300);
+        }, 3000);
+    }
+
+    // ========================================================================
+    // IMAGE TOGGLE
+    // ========================================================================
     document.addEventListener('click', function(e) {
         var btn = e.target.closest('.img-btn');
         if (!btn) return;
         document.querySelectorAll('.img-btn').forEach(function(b) {
             b.classList.remove('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
             b.classList.add('border-slate-200', 'bg-white', 'text-slate-600');
-            b.querySelector('span').className = 'w-5 h-5 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0';
+            var s = b.querySelector('span');
+            if (s) s.className = 'w-4 h-4 rounded-full border-2 border-slate-300 bg-white shadow-sm flex-shrink-0';
         });
         btn.classList.remove('border-slate-200', 'bg-white', 'text-slate-600');
         btn.classList.add('selected', 'border-indigo-500', 'bg-indigo-50/40', 'text-indigo-700');
-        btn.querySelector('span').className = 'w-5 h-5 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0';
+        var s = btn.querySelector('span');
+        if (s) s.className = 'w-4 h-4 rounded-full border-4 border-indigo-600 bg-white shadow-sm flex-shrink-0';
         document.getElementById('HasImage').value = btn.dataset.value;
     });
 
+    // ========================================================================
+    // FIELD TABLE (reused from existing)
+    // ========================================================================
     function updateFieldCount() {
         var n = document.querySelectorAll('#fieldsTable tbody tr.field-row').length;
         document.getElementById('mgFieldCount').textContent = n + ' field' + (n !== 1 ? 's' : '');
@@ -293,38 +1145,29 @@
 
     function addField() {
         var tbody = document.querySelector('#fieldsTable tbody');
-        
-        // We create two elements: the standard row, and the expandable validation/enum settings row.
         var row = document.createElement('tr');
-        row.className = 'field-row hover:bg-slate-50/30 transition-colors duration-150 fade-in';
+        row.className = 'field-row transition-colors duration-150 fade-in';
         row.dataset.index = index;
 
         var detailRow = document.createElement('tr');
-        detailRow.className = 'detail-row hidden bg-slate-50/40 border-l-2 border-indigo-500 transition-all duration-200';
+        detailRow.className = 'detail-row hidden bg-slate-50/40 border-l-2 border-indigo-500';
         detailRow.dataset.index = index;
 
-        var classes = getInputClasses();
-
-        // Standard Compact Column Inputs - Fixed syntax using standard concatenation
+        var c = getInputClasses();
         row.innerHTML = ' \
-            <td class="p-3 pl-6"> \
-                <input name="Fields[' + index + '].Name" class="' + classes + '" data-field="Name" placeholder="e.g., Title" required /> \
+            <td class="p-2.5 pl-5"> \
+                <input name="Fields[' + index + '].Name" class="' + c + '" data-field="Name" placeholder="e.g., Title" required /> \
             </td> \
-            <td class="p-3"> \
-                <select name="Fields[' + index + '].Type" class="' + classes + ' field-type cursor-pointer" data-field="Type" onchange="onTypeChange(this)"> \
-                    <option value="string">string</option> \
-                    <option value="int">int</option> \
-                    <option value="decimal">decimal</option> \
-                    <option value="bool">bool</option> \
-                    <option value="DateTime">DateTime</option> \
-                    <option value="enum">enum</option> \
-                    <option value="relation">relation</option> \
+            <td class="p-2.5"> \
+                <select name="Fields[' + index + '].Type" class="' + c + ' field-type cursor-pointer" data-field="Type" onchange="onTypeChange(this)"> \
+                    <option value="string">string</option><option value="int">int</option><option value="decimal">decimal</option> \
+                    <option value="bool">bool</option><option value="DateTime">DateTime</option><option value="enum">enum</option><option value="relation">relation</option> \
                 </select> \
             </td> \
-            <td class="p-3"> \
-                <input name="Fields[' + index + '].Length" type="number" class="' + classes + ' field-len-input" data-field="Length" placeholder="—" /> \
+            <td class="p-2.5"> \
+                <input name="Fields[' + index + '].Length" type="number" class="' + c + ' field-len-input" data-field="Length" placeholder="\u2014" /> \
             </td> \
-            <td class="p-3 text-center"> \
+            <td class="p-2.5 text-center"> \
                 <div class="inline-flex items-center justify-center"> \
                     <label class="relative inline-flex items-center cursor-pointer group"> \
                         <input type="checkbox" name="Fields[' + index + '].IsNullable" value="true" data-field="IsNullable" class="sr-only peer" /> \
@@ -333,32 +1176,27 @@
                     <input type="hidden" name="Fields[' + index + '].IsNullable" value="false" data-field="IsNullable" /> \
                 </div> \
             </td> \
-            <td class="p-3 pr-6 text-right"> \
-                <div class="inline-flex items-center gap-1.5"> \
-                    <button type="button" onclick="toggleDetails(this)" class="details-toggle-btn inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-100/80 border border-transparent rounded-lg transition-all" title="Configure validation & parameters"> \
-                        <svg class="w-4 h-4 pointer-events-none" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"> \
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/> \
-                        </svg> \
-                        <span class="text-sm font-medium tracking-tight">Validation</span> \
+            <td class="p-2.5 pr-5 text-right"> \
+                <div class="inline-flex items-center gap-1"> \
+                    <button type="button" onclick="toggleDetails(this)" class="details-toggle-btn inline-flex items-center gap-1 px-2 py-1 text-xs font-semibold text-slate-500 hover:text-indigo-600 hover:bg-slate-100/80 border border-transparent rounded-lg transition-all"> \
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 01-3 0m3 0a1.5 1.5 0 00-3 0m-9.75 0h9.75"/></svg> \
+                        <span class="text-xs">Validation</span> \
                     </button> \
-                    <button type="button" onclick="removeField(this)" class="inline-flex items-center justify-center w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all" aria-label="Remove Field"> \
-                        <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"> \
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/> \
-                        </svg> \
+                    <button type="button" onclick="removeField(this)" class="inline-flex items-center justify-center w-7 h-7 text-slate-300 hover:text-rose-500 hover:bg-rose-50 border border-transparent rounded-lg transition-all"> \
+                        <svg class="w-4 h-4 stroke-[2]" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M18 6L6 18M6 6l12 12"/></svg> \
                     </button> \
                 </div> \
             </td> \
         ';
 
-        // Validation Config Details Sub-Row Drawer Layout - Fixed string concatenation
         detailRow.innerHTML = ' \
             <td colspan="5" class="p-4 bg-slate-50/50 border-t border-b border-slate-100"> \
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6"> \
-                    <div class="space-y-4 validation-settings-panel"> \
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5"> \
+                    <div class="space-y-3 validation-settings-panel"> \
                         <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
-                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Validation Rules</span> \
+                            <span class="text-xs font-bold text-slate-600 uppercase tracking-wide">Validation Rules</span> \
                             <div class="flex items-center gap-2"> \
-                                <span class="text-sm font-semibold text-slate-500">Required Property</span> \
+                                <span class="text-xs font-semibold text-slate-500">Required</span> \
                                 <label class="relative inline-flex items-center cursor-pointer group"> \
                                     <input type="checkbox" name="Fields[' + index + '].IsRequired" value="true" data-field="IsRequired" class="sr-only peer" /> \
                                     <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
@@ -366,91 +1204,64 @@
                                 <input type="hidden" name="Fields[' + index + '].IsRequired" value="false" data-field="IsRequired" /> \
                             </div> \
                         </div> \
-                        <div class="grid grid-cols-2 gap-3 min-max-validation-inputs"> \
-                            <div> \
-                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 min-label">Min Config</label> \
-                                <input type="number" class="' + classes + ' field-min" placeholder="—" /> \
-                            </div> \
-                            <div> \
-                                <label class="block text-sm font-bold text-slate-500 uppercase mb-1.5 max-label">Max Config</label> \
-                                <input type="number" class="' + classes + ' field-max" placeholder="—" /> \
-                            </div> \
+                        <div class="grid grid-cols-2 gap-3"> \
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1 min-label">Min Config</label><input type="number" class="' + c + ' field-min" placeholder="\u2014" /></div> \
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase mb-1 max-label">Max Config</label><input type="number" class="' + c + ' field-max" placeholder="\u2014" /></div> \
                         </div> \
                     </div> \
                     <div class="space-y-3 enum-settings-panel hidden"> \
                         <div class="flex items-center justify-between border-b border-slate-100 pb-2"> \
-                            <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
-                            <div class="flex items-center gap-3 render-type-toggle"> \
-                                <span class="text-xs font-medium text-slate-400">Render as</span> \
-                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
-                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="false" checked class="w-3.5 h-3.5 text-indigo-600" /> \
-                                    <span class="text-xs font-semibold text-slate-600">Radio</span> \
-                                </label> \
-                                <label class="inline-flex items-center gap-1 cursor-pointer"> \
-                                    <input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="true" class="w-3.5 h-3.5 text-indigo-600" /> \
-                                    <span class="text-xs font-semibold text-slate-600">Checkbox</span> \
-                                </label> \
+                            <span class="text-xs font-bold text-slate-600 uppercase tracking-wide">Enum Options</span> \
+                            <div class="flex items-center gap-2"> \
+                                <span class="text-[10px] text-slate-400">Render as</span> \
+                                <label class="inline-flex items-center gap-1 cursor-pointer"><input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="false" checked class="w-3 h-3 text-indigo-600" /><span class="text-xs text-slate-600">Radio</span></label> \
+                                <label class="inline-flex items-center gap-1 cursor-pointer"><input type="radio" name="Fields[' + index + '].EnumRenderAsCheckbox" value="true" class="w-3 h-3 text-indigo-600" /><span class="text-xs text-slate-600">Checkbox</span></label> \
                             </div> \
                         </div> \
-                        <div class="flex items-center gap-2 mb-2"> \
+                        <div class="flex items-center gap-2"> \
                             <label class="relative inline-flex items-center cursor-pointer group"> \
                                 <input type="checkbox" name="Fields[' + index + '].UseCommonTable" value="true" data-field="UseCommonTable" class="sr-only peer use-common-table-cb" onchange="onUseCommonTableChange(this)" /> \
                                 <div class="w-8 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
                             </label> \
-                            <span class="text-sm font-semibold text-slate-600">Use Common Table</span> \
+                            <span class="text-xs font-semibold text-slate-600">Use Common Table</span> \
                             <input type="hidden" name="Fields[' + index + '].UseCommonTable" value="false" data-field="UseCommonTable" /> \
                         </div> \
                         <div class="flex gap-2"> \
-                            <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 placeholder-slate-400 bg-white outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
-                            <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"> \
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"> \
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/> \
-                                </svg> \
-                                Add \
-                            </button> \
+                            <input type="text" class="tag-input flex-1 px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium outline-none focus:border-indigo-500" placeholder="Type name, e.g., Pending" /> \
+                            <button type="button" onclick="handleAddTagClick(this)" class="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>Add</button> \
+                        </div> \
+                        <div class="text-[10px] text-slate-400 italic common-table-hint hidden">Auto-seeded to CommonTable</div> \
+                        <div class="tag-container" data-row="' + index + '"> \
+                            <span class="placeholder-msg">No options yet.</span> \
+                            <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
+                        </div> \
                     </div> \
-                    <div class="text-xs text-slate-400 italic common-table-hint hidden">Options will be auto-seeded to CommonTable (Type = ModuleName + FieldName)</div> \
-                    <div class="tag-container flex flex-wrap gap-1.5 p-2 bg-white border border-slate-200 rounded-xl min-h-[38px] items-center" data-row="' + index + '"> \
-                        <span class="text-sm text-slate-400 font-medium placeholder-msg">No options declared yet.</span> \
-                        <input type="hidden" name="Fields[' + index + '].EnumValues" class="field-enum" data-field="EnumValues" value="" /> \
+                    <div class="space-y-3 relation-settings-panel hidden"> \
+                        <div class="border-b border-slate-100 pb-2"><span class="text-xs font-bold text-slate-600 uppercase tracking-wide">Related Table</span></div> \
+                        <select class="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 relation-table-select" onchange="onRelationTableChange(this)"><option value="">-- Select Related Table --</option></select> \
+                        <input type="hidden" name="Fields[' + index + '].RelatedEntityName" class="field-related-entity" data-field="RelatedEntityName" value="" /> \
+                        <input type="hidden" name="Fields[' + index + '].IsRelation" value="true" data-field="IsRelation" /> \
+                        <div class="flex items-center justify-between bg-indigo-50/60 rounded-xl px-4 py-2 border border-indigo-100"> \
+                            <span class="text-xs font-semibold text-slate-700">Pivot (Many-to-Many)</span> \
+                            <label class="relative inline-flex items-center cursor-pointer group"> \
+                                <input type="checkbox" name="Fields[' + index + '].IsPivot" value="true" data-field="IsPivot" class="sr-only peer" /> \
+                                <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
+                            </label> \
+                            <input type="hidden" name="Fields[' + index + '].IsPivot" value="false" data-field="IsPivot" /> \
+                        </div> \
                     </div> \
                 </div> \
-                <div class="space-y-3 relation-settings-panel hidden"> \
-                    <div class="border-b border-slate-100 pb-2"> \
-                        <span class="text-sm font-bold text-slate-600 uppercase tracking-wide">Related Table</span> \
-                    </div> \
-                    <select class="w-full px-3 py-1.5 border border-slate-200 rounded-xl text-sm font-medium text-slate-800 bg-white outline-none focus:border-indigo-500 relation-table-select" onchange="onRelationTableChange(this)"> \
-                        <option value="">-- Select Related Table --</option> \
-                    </select> \
-                    <input type="hidden" name="Fields[' + index + '].RelatedEntityName" class="field-related-entity" data-field="RelatedEntityName" value="" /> \
-                    <input type="hidden" name="Fields[' + index + '].IsRelation" value="true" data-field="IsRelation" /> \
-                    <div class="flex items-center justify-between bg-indigo-50/60 rounded-xl px-4 py-2.5 border border-indigo-100"> \
-                        <span class="text-sm font-semibold text-slate-700">Pivot Table (Many-to-Many)</span> \
-                        <label class="relative inline-flex items-center cursor-pointer group"> \
-                            <input type="checkbox" name="Fields[' + index + '].IsPivot" value="true" data-field="IsPivot" class="sr-only peer" /> \
-                            <div class="w-9 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full after:content-[\'\'] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-indigo-600 shadow-inner"></div> \
-                        </label> \
-                        <input type="hidden" name="Fields[' + index + '].IsPivot" value="false" data-field="IsPivot" /> \
-                    </div> \
-                    <p class="text-xs text-slate-400 italic">When enabled, a junction table with checkboxes (multi-select) will be generated instead of a single dropdown.</p> \
-                </div> \
-            </div> \
-        </td> \
+            </td> \
         ';
 
-        // Fix: use addEventListener instead of inline onkeydown for reliable tag input
         var tagInput = detailRow.querySelector('.tag-input');
         tagInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter' || e.key === ',') {
-                e.preventDefault();
-                addOptionTag(this);
-            }
+            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addOptionTag(this); }
         });
 
         tbody.appendChild(row);
         tbody.appendChild(detailRow);
 
-        // Populate relation table dropdown
         var relSelect = detailRow.querySelector('.relation-table-select');
         if (relSelect) {
             for (var i = 0; i < availableTables.length; i++) {
@@ -470,18 +1281,16 @@
         if (!btn) return;
         var row = btn.closest('tr');
         if (!row) return;
-        var trIndex = row.dataset.index;
+        var idx = row.dataset.index;
         var tbody = row.parentElement;
         if (!tbody) return;
-        
-        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        if (!targetDetailRow) return;
-        
-        if (targetDetailRow.classList.contains('hidden')) {
-            targetDetailRow.classList.remove('hidden');
+        var dr = tbody.querySelector('tr.detail-row[data-index="' + idx + '"]');
+        if (!dr) return;
+        if (dr.classList.contains('hidden')) {
+            dr.classList.remove('hidden');
             btn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
         } else {
-            targetDetailRow.classList.add('hidden');
+            dr.classList.add('hidden');
             btn.classList.remove('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
         }
     }
@@ -490,321 +1299,190 @@
         if (!select) return;
         var row = select.closest('tr');
         if (!row) return;
-        var trIndex = row.dataset.index;
+        var idx = row.dataset.index;
         var tbody = row.parentElement;
         if (!tbody) return;
-        
-        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        if (!detailRow) return;
-        
+        var dr = tbody.querySelector('tr.detail-row[data-index="' + idx + '"]');
+        if (!dr) return;
         var isEnum = select.value === 'enum';
-        var isRelation = select.value === 'relation';
-
-        var isRelationInput = detailRow.querySelector('input[data-field="IsRelation"]');
-        if (isRelationInput) isRelationInput.disabled = !isRelation;
-
+        var isRel = select.value === 'relation';
+        var relInput = dr.querySelector('input[data-field="IsRelation"]');
+        if (relInput) relInput.disabled = !isRel;
         var lenInput = row.querySelector('.field-len-input');
-        var valSettings = detailRow.querySelector('.validation-settings-panel');
-        var enumSettings = detailRow.querySelector('.enum-settings-panel');
-        var relationSettings = detailRow.querySelector('.relation-settings-panel');
-        var detailToggleBtn = row.querySelector('.details-toggle-btn');
-        
+        var valP = dr.querySelector('.validation-settings-panel');
+        var enumP = dr.querySelector('.enum-settings-panel');
+        var relP = dr.querySelector('.relation-settings-panel');
+        var dtBtn = row.querySelector('.details-toggle-btn');
         if (lenInput) {
             if (select.value === 'string' || select.value === 'int' || select.value === 'decimal') {
-                lenInput.disabled = false;
-                lenInput.classList.remove('opacity-40');
-                lenInput.placeholder = '—';
+                lenInput.disabled = false; lenInput.classList.remove('opacity-40'); lenInput.placeholder = '\u2014';
             } else {
-                lenInput.disabled = true;
-                lenInput.value = '';
-                lenInput.classList.add('opacity-40');
-                lenInput.placeholder = 'N/A';
+                lenInput.disabled = true; lenInput.value = ''; lenInput.classList.add('opacity-40'); lenInput.placeholder = 'N/A';
             }
         }
-
-        if (enumSettings) enumSettings.classList.add('hidden');
-        if (relationSettings) relationSettings.classList.add('hidden');
-        if (valSettings) valSettings.classList.remove('hidden');
-
+        if (enumP) enumP.classList.add('hidden');
+        if (relP) relP.classList.add('hidden');
+        if (valP) valP.classList.remove('hidden');
         if (isEnum) {
-            if (enumSettings) enumSettings.classList.remove('hidden');
-            if (valSettings) valSettings.classList.add('hidden');
-            detailRow.classList.remove('hidden');
-            if (detailToggleBtn) {
-                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Options';
-            }
-            var cb = enumSettings && enumSettings.querySelector('.use-common-table-cb');
+            if (enumP) enumP.classList.remove('hidden');
+            if (valP) valP.classList.add('hidden');
+            dr.classList.remove('hidden');
+            if (dtBtn) { dtBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100'); var s = dtBtn.querySelector('span'); if (s) s.textContent = 'Options'; }
+            var cb = enumP && enumP.querySelector('.use-common-table-cb');
             if (cb) onUseCommonTableChange(cb);
-        } else if (isRelation) {
-            if (relationSettings) relationSettings.classList.remove('hidden');
-            if (valSettings) valSettings.classList.add('hidden');
-            detailRow.classList.remove('hidden');
-            if (detailToggleBtn) {
-                detailToggleBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100');
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Relation';
-            }
+        } else if (isRel) {
+            if (relP) relP.classList.remove('hidden');
+            if (valP) valP.classList.add('hidden');
+            dr.classList.remove('hidden');
+            if (dtBtn) { dtBtn.classList.add('text-indigo-600', 'bg-indigo-50', 'border-indigo-100'); var s = dtBtn.querySelector('span'); if (s) s.textContent = 'Relation'; }
         } else {
-            if (detailToggleBtn) {
-                var span = detailToggleBtn.querySelector('span');
-                if (span) span.textContent = 'Validation';
-            }
+            if (dtBtn) { var s = dtBtn.querySelector('span'); if (s) s.textContent = 'Validation'; }
         }
-
         updateValidationInputNames(row);
     }
 
     function onUseCommonTableChange(cb) {
         if (!cb) return;
-        var panel = cb.closest('.enum-settings-panel');
-        if (!panel) return;
-        var hint = panel.querySelector('.common-table-hint');
-        if (hint) {
-            if (cb.checked) {
-                hint.classList.remove('hidden');
-            } else {
-                hint.classList.add('hidden');
-            }
-        }
-        var renderToggle = panel.querySelector('.render-type-toggle');
-        if (renderToggle) {
-            if (cb.checked) {
-                renderToggle.classList.add('hidden');
-            } else {
-                renderToggle.classList.remove('hidden');
-            }
-        }
+        var p = cb.closest('.enum-settings-panel');
+        if (!p) return;
+        var h = p.querySelector('.common-table-hint');
+        if (h) h.classList.toggle('hidden', !cb.checked);
+        var rt = p.querySelector('.render-type-toggle');
+        if (rt) rt.classList.toggle('hidden', !!cb.checked);
     }
 
     function onRelationTableChange(select) {
         if (!select) return;
-        var row = select.closest('tr.detail-row');
-        if (!row) return;
-        var trIndex = row.dataset.index;
-        var tbody = row.parentElement;
+        var dr = select.closest('tr.detail-row');
+        if (!dr) return;
+        var idx = dr.dataset.index;
+        var tbody = dr.parentElement;
         if (!tbody) return;
-        var fieldRow = tbody.querySelector('tr.field-row[data-index="' + trIndex + '"]');
-        if (!fieldRow) return;
-        var nameInput = fieldRow.querySelector('input[data-field="Name"]');
-        if (!nameInput) return;
-
-        var hidden = row.querySelector('.field-related-entity');
-        if (hidden) hidden.value = select.value;
-
-        if (select.value && (!nameInput.value || availableTables.indexOf(nameInput.value) !== -1)) {
-            nameInput.value = select.value;
-        }
+        var fr = tbody.querySelector('tr.field-row[data-index="' + idx + '"]');
+        if (!fr) return;
+        var ni = fr.querySelector('input[data-field="Name"]');
+        if (!ni) return;
+        var h = dr.querySelector('.field-related-entity');
+        if (h) h.value = select.value;
+        if (select.value && (!ni.value || availableTables.indexOf(ni.value) !== -1)) ni.value = select.value;
     }
 
     function onRelationSelect() {
-        var select = document.getElementById('relTableSelect');
-        var table = select.value;
-
-        var hiddenContainer = document.getElementById('relationFieldsContainer');
-        var deleteRow = document.getElementById('deleteBehaviorRow');
-        var pivotCard = document.getElementById('pivotCard');
-        var pivotTitle = document.getElementById('pivotTitle');
-        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
-
-        if (!table) {
-            deleteRow.classList.add('hidden');
-            hiddenContainer.innerHTML = '';
-            pivotCard.classList.add('hidden');
-            pivotCard.classList.add('opacity-50');
-            pivotTitle.textContent = 'Pivot';
-            pivotCb.disabled = true;
-            pivotCb.checked = false;
-            return;
+        var sel = document.getElementById('relTableSelect');
+        var tbl = sel.value;
+        var hc = document.getElementById('relationFieldsContainer');
+        var dr = document.getElementById('deleteBehaviorRow');
+        var pc = document.getElementById('pivotCard');
+        var pt = document.getElementById('pivotTitle');
+        var pcb = pc.querySelector('.relation-pivot-cb');
+        if (!tbl) {
+            dr.style.display = 'none'; hc.innerHTML = ''; pc.style.display = 'none'; pc.style.opacity = '0.5'; pt.textContent = 'Pivot'; pcb.disabled = true; pcb.checked = false; return;
         }
-
-        deleteRow.classList.remove('hidden');
-        pivotCard.classList.remove('hidden');
-        pivotCard.classList.remove('opacity-50');
-        pivotTitle.textContent = table + ' Pivot';
-        pivotCb.disabled = false;
-
-        hiddenContainer.innerHTML = '\
-            <input type="hidden" name="_rel_Name" value="' + table + '" /> \
-            <input type="hidden" name="_rel_IsPivot" value="false" /> \
-            <input type="hidden" name="_rel_DeleteBehavior" value="Cascade" /> \
-        ';
+        dr.style.display = ''; pc.style.display = ''; pc.style.opacity = '1'; pt.textContent = tbl + ' Pivot'; pcb.disabled = false;
+        hc.innerHTML = '<input type="hidden" name="_rel_Name" value="' + tbl + '" /><input type="hidden" name="_rel_IsPivot" value="false" /><input type="hidden" name="_rel_DeleteBehavior" value="Cascade" />';
     }
 
     function clearRelation() {
-        var select = document.getElementById('relTableSelect');
-        select.value = '';
-        document.getElementById('deleteBehaviorRow').classList.add('hidden');
+        document.getElementById('relTableSelect').value = '';
+        document.getElementById('deleteBehaviorRow').style.display = 'none';
         document.getElementById('relationFieldsContainer').innerHTML = '';
-        var pivotCard = document.getElementById('pivotCard');
-        pivotCard.classList.add('hidden');
-        pivotCard.classList.add('opacity-50');
+        var pc = document.getElementById('pivotCard');
+        pc.style.display = 'none'; pc.style.opacity = '0.5';
         document.getElementById('pivotTitle').textContent = 'Pivot';
-        var pivotCb = pivotCard.querySelector('.relation-pivot-cb');
-        pivotCb.disabled = true;
-        pivotCb.checked = false;
+        var pcb = pc.querySelector('.relation-pivot-cb');
+        pcb.disabled = true; pcb.checked = false;
     }
 
     function onDeleteBehaviorChange(radio) {
         var hc = document.getElementById('relationFieldsContainer');
-        var existing = hc.querySelector('input[name="_rel_DeleteBehavior"]');
-        if (existing) existing.value = radio.value;
+        var e = hc.querySelector('input[name="_rel_DeleteBehavior"]');
+        if (e) e.value = radio.value;
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
-
-        // Sync pivot checkbox -> hidden _rel_IsPivot value
-        document.addEventListener('change', function (e) {
-            if (e.target.classList.contains('relation-pivot-cb')) {
-                var val = e.target.checked ? 'true' : 'false';
-                var hc = document.getElementById('relationFieldsContainer');
-                var existing = hc.querySelector('input[name="_rel_IsPivot"]');
-                if (existing) existing.value = val;
-            }
-        });
-
-        // Toggle relation selector enabled state
-        var toggler = document.querySelector('.toggler-relation');
-        var selector = document.getElementById('relationSelector');
-        if (toggler && selector) {
-            toggler.addEventListener('change', function () {
-                if (toggler.checked) {
-                    selector.classList.remove('opacity-50', 'pointer-events-none');
-                    selector.classList.add('animate-fadeIn');
-                } else {
-                    selector.classList.add('opacity-50', 'pointer-events-none');
-                    selector.classList.remove('animate-fadeIn');
-                    clearRelation();
-                }
-            });
-        }
-    });
-
-    /* Enum Option Tag Utilities */
     function handleAddTagClick(btn) {
         if (!btn) return;
-        var panel = btn.closest('.enum-settings-panel');
-        if (!panel) return;
-        var input = panel.querySelector('.tag-input');
-        if (input) addOptionTag(input);
+        var p = btn.closest('.enum-settings-panel');
+        if (!p) return;
+        var i = p.querySelector('.tag-input');
+        if (i) addOptionTag(i);
     }
 
     function addOptionTag(input) {
         if (!input) return;
-        var value = input.value.trim();
-        if (!value) return;
-
-        if (value.indexOf(',') > -1) {
-            value.split(',').forEach(function(v) { 
-                addOptionTagFromString(v.trim(), input); 
-            });
-            input.value = '';
-            return;
-        }
-
-        addOptionTagFromString(value, input);
-        input.value = '';
-        input.focus();
+        var v = input.value.trim();
+        if (!v) return;
+        if (v.indexOf(',') > -1) { v.split(',').forEach(function(x) { addOptionTagFromString(x.trim(), input); }); input.value = ''; return; }
+        addOptionTagFromString(v, input); input.value = ''; input.focus();
     }
 
     function addOptionTagFromString(value, input) {
         if (!value || !input) return;
-        var panel = input.closest('.enum-settings-panel');
-        if (!panel) return;
-        var container = panel.querySelector('.tag-container');
-        if (!container) return;
-        
-        var placeholder = container.querySelector('.placeholder-msg');
-        if (placeholder) placeholder.style.display = 'none';
-
-        var existing = container.querySelectorAll('.tag');
-        for (var i = 0; i < existing.length; i++) {
-            if (existing[i].dataset.val.toLowerCase() === value.toLowerCase()) return;
-        }
-
+        var p = input.closest('.enum-settings-panel');
+        if (!p) return;
+        var c = p.querySelector('.tag-container');
+        if (!c) return;
+        var ph = c.querySelector('.placeholder-msg');
+        if (ph) ph.style.display = 'none';
+        var existing = c.querySelectorAll('.tag');
+        for (var i = 0; i < existing.length; i++) { if (existing[i].dataset.val.toLowerCase() === value.toLowerCase()) return; }
         var tag = document.createElement('span');
-        tag.className = 'tag inline-flex items-center gap-1.5 pl-2.5 pr-1.5 py-1 bg-indigo-50 border border-indigo-100 rounded-lg text-xs font-semibold text-indigo-600 leading-none';
+        tag.className = 'tag';
         tag.dataset.val = value;
-        tag.innerHTML = value + ' <button type="button" class="text-indigo-400 hover:text-indigo-700 hover:bg-indigo-100/50 w-4 h-4 rounded inline-flex items-center justify-center font-bold text-xs leading-none transition-colors" onclick="removeOptionTag(this)">\u00d7</button>';
-
-        var hiddenInput = container.querySelector('.field-enum');
-        container.insertBefore(tag, hiddenInput);
-        updateEnumHidden(container);
+        tag.innerHTML = value + ' <button type="button" onclick="removeOptionTag(this)">\u00d7</button>';
+        var h = c.querySelector('.field-enum');
+        c.insertBefore(tag, h);
+        updateEnumHidden(c);
     }
 
     function removeOptionTag(btn) {
         if (!btn) return;
-        var container = btn.closest('.tag-container');
-        if (!container) return;
+        var c = btn.closest('.tag-container');
+        if (!c) return;
         btn.parentElement.remove();
-        
-        var tags = container.querySelectorAll('.tag');
-        if (tags.length === 0) {
-            var placeholder = container.querySelector('.placeholder-msg');
-            if (placeholder) placeholder.style.display = '';
-        }
-        updateEnumHidden(container);
+        if (c.querySelectorAll('.tag').length === 0) { var ph = c.querySelector('.placeholder-msg'); if (ph) ph.style.display = ''; }
+        updateEnumHidden(c);
     }
 
     function updateEnumHidden(container) {
         if (!container) return;
-        var hidden = container.querySelector('.field-enum');
-        if (!hidden) return;
+        var h = container.querySelector('.field-enum');
+        if (!h) return;
         var tags = container.querySelectorAll('.tag');
-        var values = [];
-        for (var i = 0; i < tags.length; i++) {
-            values.push(tags[i].dataset.val);
-        }
-        hidden.value = values.join(',');
+        var vals = [];
+        for (var i = 0; i < tags.length; i++) vals.push(tags[i].dataset.val);
+        h.value = vals.join(',');
     }
 
     function removeField(button) {
         if (!button) return;
         var row = button.closest('tr');
         if (!row) return;
-        var trIndex = row.dataset.index;
+        var idx = row.dataset.index;
         var tbody = row.parentElement;
         if (!tbody) return;
-        
-        var targetDetailRow = tbody.querySelector('tr.detail-row[data-index="' + trIndex + '"]');
-        
+        var dr = tbody.querySelector('tr.detail-row[data-index="' + idx + '"]');
         row.classList.add('opacity-0', '-translate-x-4', 'transition-all', 'duration-200');
-        if (targetDetailRow) {
-            targetDetailRow.classList.add('opacity-0', '-translate-x-4');
-        }
-
-        setTimeout(function () { 
-            row.remove(); 
-            if (targetDetailRow) targetDetailRow.remove();
-            reindexFields(); 
-            updateFieldCount(); 
-        }, 200);
+        if (dr) dr.classList.add('opacity-0', '-translate-x-4');
+        setTimeout(function() { row.remove(); if (dr) dr.remove(); reindexFields(); updateFieldCount(); }, 200);
     }
 
     function reindexFields() {
         var rows = document.querySelectorAll('#fieldsTable tbody tr.field-row');
-        rows.forEach(function (row, rowIndex) {
-            row.dataset.index = rowIndex;
-            row.querySelectorAll('[data-field]').forEach(function (input) {
-                input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
-            });
-            
+        rows.forEach(function(row, ri) {
+            row.dataset.index = ri;
+            row.querySelectorAll('[data-field]').forEach(function(inp) { inp.name = 'Fields[' + ri + '].' + inp.dataset.field; });
             var tbody = row.parentElement;
             if (tbody) {
-                var detailRows = tbody.querySelectorAll('tr.detail-row');
-                var matchedDetail = detailRows[rowIndex];
-                if (matchedDetail) {
-                    matchedDetail.dataset.index = rowIndex;
-                    matchedDetail.querySelectorAll('[data-field]').forEach(function (input) {
-                        input.name = 'Fields[' + rowIndex + '].' + input.dataset.field;
-                    });
-                    var tagContainer = matchedDetail.querySelector('.tag-container');
-                    if (tagContainer) tagContainer.dataset.row = rowIndex;
+                var drs = tbody.querySelectorAll('tr.detail-row');
+                var md = drs[ri];
+                if (md) {
+                    md.dataset.index = ri;
+                    md.querySelectorAll('[data-field]').forEach(function(inp) { inp.name = 'Fields[' + ri + '].' + inp.dataset.field; });
+                    var tc = md.querySelector('.tag-container');
+                    if (tc) tc.dataset.row = ri;
                 }
             }
-
-            updateValidationInputNames(row, rowIndex);
+            updateValidationInputNames(row, ri);
         });
         index = rows.length;
     }
@@ -812,57 +1490,106 @@
     function updateValidationInputNames(row, rowIndex) {
         if (!row) return;
         if (rowIndex === undefined) {
-            var tbodyEl = row.parentElement;
-            if (!tbodyEl) return;
-            var all = Array.from(tbodyEl.children).filter(function (r) { 
-                return r.classList.contains('field-row'); 
-            });
+            var te = row.parentElement;
+            if (!te) return;
+            var all = Array.from(te.children).filter(function(r) { return r.classList.contains('field-row'); });
             rowIndex = all.indexOf(row);
         }
-        
         var tbody = row.parentElement;
         if (!tbody) return;
-        var detailRow = tbody.querySelector('tr.detail-row[data-index="' + row.dataset.index + '"]');
-        if (!detailRow) return;
-
-        var typeSelect = row.querySelector('.field-type');
-        if (!typeSelect) return;
-        var type = typeSelect.value;
-        
-        var minInput = detailRow.querySelector('.field-min');
-        var maxInput = detailRow.querySelector('.field-max');
-        var minLabel = detailRow.querySelector('.min-label');
-        var maxLabel = detailRow.querySelector('.max-label');
-        
-        if (!minInput || !maxInput) return;
-        
-        var numeric = type === 'int' || type === 'decimal';
-        var isEnum = type === 'enum';
-        var isRelation = type === 'relation';
-
-        minInput.removeAttribute('name');
-        maxInput.removeAttribute('name');
-        minInput.disabled = isEnum || isRelation;
-        maxInput.disabled = isEnum || isRelation;
-        minInput.step = '1';
-        maxInput.step = '1';
-
+        var dr = tbody.querySelector('tr.detail-row[data-index="' + row.dataset.index + '"]');
+        if (!dr) return;
+        var ts = row.querySelector('.field-type');
+        if (!ts) return;
+        var type = ts.value;
+        var minI = dr.querySelector('.field-min'), maxI = dr.querySelector('.field-max');
+        var minL = dr.querySelector('.min-label'), maxL = dr.querySelector('.max-label');
+        if (!minI || !maxI) return;
+        var num = type === 'int' || type === 'decimal';
+        var isEnum = type === 'enum', isRel = type === 'relation';
+        minI.removeAttribute('name'); maxI.removeAttribute('name');
+        minI.disabled = isEnum || isRel; maxI.disabled = isEnum || isRel;
+        minI.step = '1'; maxI.step = '1';
         if (type === 'string') {
-            minInput.name = 'Fields[' + rowIndex + '].MinLength';
-            maxInput.name = 'Fields[' + rowIndex + '].MaxLength';
-            if (minLabel) minLabel.textContent = 'Min Length';
-            if (maxLabel) maxLabel.textContent = 'Max Length';
-        } else if (numeric) {
-            minInput.name = 'Fields[' + rowIndex + '].MinValue';
-            maxInput.name = 'Fields[' + rowIndex + '].MaxValue';
-            if (minLabel) minLabel.textContent = 'Min Value';
-            if (maxLabel) maxLabel.textContent = 'Max Value';
-            if (type === 'decimal') { minInput.step = '0.01'; maxInput.step = '0.01'; }
+            minI.name = 'Fields[' + rowIndex + '].MinLength'; maxI.name = 'Fields[' + rowIndex + '].MaxLength';
+            if (minL) minL.textContent = 'Min Length'; if (maxL) maxL.textContent = 'Max Length';
+        } else if (num) {
+            minI.name = 'Fields[' + rowIndex + '].MinValue'; maxI.name = 'Fields[' + rowIndex + '].MaxValue';
+            if (minL) minL.textContent = 'Min Value'; if (maxL) maxL.textContent = 'Max Value';
+            if (type === 'decimal') { minI.step = '0.01'; maxI.step = '0.01'; }
         } else {
-            if (minLabel) minLabel.textContent = 'Min Config';
-            if (maxLabel) maxLabel.textContent = 'Max Config';
-            minInput.value = '';
-            maxInput.value = '';
+            if (minL) minL.textContent = 'Min Config'; if (maxL) maxL.textContent = 'Max Config';
+            minI.value = ''; maxI.value = '';
         }
     }
+
+    // ========================================================================
+    // DOM READY
+    // ========================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        buildSidebarData();
+        renderSidebar();
+        toggleSidebarPreview();
+
+        document.addEventListener('keydown', function(e) { if (e.key === 'Escape') closeModal(); });
+
+        document.addEventListener('change', function(e) {
+            if (e.target.classList.contains('relation-pivot-cb')) {
+                var val = e.target.checked ? 'true' : 'false';
+                var hc = document.getElementById('relationFieldsContainer');
+                var ex = hc.querySelector('input[name="_rel_IsPivot"]');
+                if (ex) ex.value = val;
+            }
+        });
+
+        var toggler = document.querySelector('.toggler-relation');
+        var selector = document.getElementById('relationSelector');
+        if (toggler && selector) {
+            toggler.addEventListener('change', function() {
+                if (toggler.checked) { selector.style.opacity = '1'; selector.style.pointerEvents = 'auto'; }
+                else { selector.style.opacity = '0.5'; selector.style.pointerEvents = 'none'; clearRelation(); }
+            });
+        }
+
+        // Live preview: show typed module name in sidebar
+        var moduleInput = document.getElementById('moduleNameInput');
+        if (moduleInput) {
+            moduleInput.addEventListener('input', function() {
+                var name = this.value.trim();
+                var preview = document.getElementById('sidebarPreviewNew');
+                var nameEl = document.getElementById('sidebarPreviewName');
+                if (!preview || !nameEl) return;
+                if (name) {
+                    nameEl.textContent = name;
+                    preview.classList.remove('hidden');
+                } else {
+                    preview.classList.add('hidden');
+                }
+            });
+        }
+
+        // Click sidebar module → navigate to its index page
+        document.addEventListener('click', function(e) {
+            var link = e.target.closest('#sidebarPreviewContent .sidebar-item-link');
+            if (link && !e.target.closest('.item-actions')) {
+                var controller = link.getAttribute('data-controller');
+                if (controller) {
+                    window.location.href = '/' + controller + '/Index';
+                }
+            }
+        });
+
+        // Auto-show sidebar on success
+        var successMsg = '@TempData["Success"]';
+        if (successMsg) {
+            showToast(successMsg, 'success');
+            var toggle = document.getElementById('sidebarToggle');
+            if (toggle && !toggle.checked) {
+                toggle.checked = true;
+                toggleSidebarPreview();
+            }
+        }
+        var errorMsg = '@TempData["Error"]';
+        if (errorMsg) showToast(errorMsg, 'error');
+    });
 </script>

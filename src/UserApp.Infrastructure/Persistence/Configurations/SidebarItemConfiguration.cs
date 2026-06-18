@@ -13,7 +13,11 @@ public class SidebarItemConfiguration : IEntityTypeConfiguration<SidebarItem>
         builder.Property(x => x.ModuleName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.ControllerName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.AreaName).HasMaxLength(100);
-        builder.Property(x => x.GroupName).HasMaxLength(100).IsRequired();
         builder.Property(x => x.IconSvg).HasMaxLength(500);
+        builder.HasOne(x => x.Group)
+            .WithMany(x => x.Items)
+            .HasForeignKey(x => x.GroupId)
+            .OnDelete(DeleteBehavior.Cascade);
+    
     }
 }

@@ -1,3 +1,6 @@
+using UserApp.Domain.SidebarGroups;
+using UserApp.Domain.SidebarItems;
+
 namespace UserApp.Web.ViewModels.ModuleGenerator;
 
 public class GenerateModuleViewModel
@@ -9,8 +12,10 @@ public class GenerateModuleViewModel
     public bool HasImage { get; set; }
     public bool HasRelation { get; set; }
 
-    public string? SidebarGroup { get; set; }
+    public bool EnableSidebar { get; set; }
 
     public List<ModuleFieldViewModel> Fields { get; set; } = new();
     public List<string> AvailableTables { get; set; } = new();
+    public List<SidebarGroup> SidebarGroups { get; set; } = new();
+    public List<SidebarItem> SidebarItems { get; set; } = new();
 }

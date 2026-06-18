@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using UserApp.Infrastructure.Persistence;
 
@@ -11,9 +12,11 @@ using UserApp.Infrastructure.Persistence;
 namespace UserApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260618034749_AddSidebarGroup")]
+    partial class AddSidebarGroup
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -92,9 +95,16 @@ namespace UserApp.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(65,30)");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime(6)");
@@ -247,11 +257,10 @@ namespace UserApp.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasColumnType("longtext");
+                    b.Property<Guid>("MilkId")
+                        .HasColumnType("char(36)");
 
-                    b.Property<string>("Status")
+                    b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
 
@@ -380,36 +389,28 @@ namespace UserApp.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("char(36)");
 
-                    b.Property<Guid>("CategoryId")
-                        .HasColumnType("char(36)")
-                        .HasColumnName("Category_id");
-
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<string>("Description")
-                        .IsRequired()
-                        .HasColumnType("longtext");
-
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasColumnType("longtext");
 
-                    b.Property<int>("Price")
-                        .HasColumnType("int");
+                    b.Property<string>("Paymet")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
-                    b.Property<int>("Quantity")
-                        .HasColumnType("int");
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("longtext");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("CategoryId");
 
                     b.ToTable("Products");
                 });
@@ -551,8 +552,10 @@ namespace UserApp.Infrastructure.Migrations
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("int");
 
-                    b.Property<Guid>("GroupId")
-                        .HasColumnType("char(36)");
+                    b.Property<string>("GroupName")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("varchar(100)");
 
                     b.Property<string>("IconSvg")
                         .HasMaxLength(500)
@@ -570,8 +573,6 @@ namespace UserApp.Infrastructure.Migrations
                         .HasColumnType("datetime(6)");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("GroupId");
 
                     b.ToTable("SidebarItems", (string)null);
                 });
@@ -645,17 +646,6 @@ namespace UserApp.Infrastructure.Migrations
                     b.ToTable("users", (string)null);
                 });
 
-            modelBuilder.Entity("UserApp.Domain.Products.Product", b =>
-                {
-                    b.HasOne("UserApp.Domain.Categorys.Category", "Category")
-                        .WithMany()
-                        .HasForeignKey("CategoryId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Category");
-                });
-
             modelBuilder.Entity("UserApp.Domain.Roles.RolePermission", b =>
                 {
                     b.HasOne("UserApp.Domain.Roles.Permission", "Permission")
@@ -692,17 +682,6 @@ namespace UserApp.Infrastructure.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("UserApp.Domain.SidebarItems.SidebarItem", b =>
-                {
-                    b.HasOne("UserApp.Domain.SidebarGroups.SidebarGroup", "Group")
-                        .WithMany("Items")
-                        .HasForeignKey("GroupId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Group");
                 });
 
             modelBuilder.Entity("UserApp.Domain.Users.User", b =>
@@ -743,11 +722,6 @@ namespace UserApp.Infrastructure.Migrations
                     b.Navigation("RolePermissions");
 
                     b.Navigation("UserRoles");
-                });
-
-            modelBuilder.Entity("UserApp.Domain.SidebarGroups.SidebarGroup", b =>
-                {
-                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("UserApp.Domain.Users.User", b =>
