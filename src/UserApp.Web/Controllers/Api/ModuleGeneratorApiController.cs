@@ -5,6 +5,7 @@ using UserApp.Application.Common;
 using UserApp.Application.Common.DTOs;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Infrastructure.Persistence;
+using UserApp.Application.SidebarGroups.Interfaces;
 using UserApp.Web.ViewModels.ModuleGenerator;
 
 namespace UserApp.Web.Controllers.Api;
@@ -35,6 +36,14 @@ public class ModuleGeneratorApiController : ControllerBase
             .ToList();
 
         return Ok(ApiResponse<List<string>>.Ok(tables, "Tables retrieved successfully"));
+    private readonly ISidebarGroupService _sidebarGroupService;
+
+    public ModuleGeneratorApiController(
+        IModuleGeneratorService service,
+        ISidebarGroupService sidebarGroupService)
+    {
+        _service = service;
+        _sidebarGroupService = sidebarGroupService;
     }
 
     [HttpPost]
@@ -74,17 +83,25 @@ public class ModuleGeneratorApiController : ControllerBase
             })
             .ToList();
 
+        Guid? sidebarGroupId = null;
+        if (vm.EnableSidebar)
+        {
+            var groups = await _sidebarGroupService.GetAllOrderedAsync();
+            sidebarGroupId = groups.FirstOrDefault()?.Id;
+        }
+
         await _service.GenerateModuleAsync(
             moduleName,
             fields,
             vm.RunMigration,
             vm.HasImage,
             vm.RunDbUpdate,
-            vm.SidebarGroup);
+            sidebarGroupId);
 
         return Ok(
             ApiResponse<object>.Ok(
                 null,
                 $"{moduleName} module generated successfully"));
     }
+}
 }

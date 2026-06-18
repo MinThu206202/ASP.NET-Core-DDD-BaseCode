@@ -52,7 +52,7 @@ public class ModuleGeneratorService : IModuleGeneratorService
         bool runMigration = false,
         bool hasImage = false,
         bool runDbUpdate = false,
-        string? sidebarGroup = null
+        Guid? sidebarGroupId = null
     )
     {
         if (string.IsNullOrWhiteSpace(moduleName))
@@ -94,8 +94,8 @@ public class ModuleGeneratorService : IModuleGeneratorService
 
         SeedCommonTableFields(name, fields);
 
-        if (!string.IsNullOrWhiteSpace(sidebarGroup))
-            _sidebarUpdater.Add(name, sidebarGroup);
+        if (sidebarGroupId.HasValue)
+            _sidebarUpdater.Add(name, sidebarGroupId.Value);
 
         Console.WriteLine($"Module {name} generated successfully");
 

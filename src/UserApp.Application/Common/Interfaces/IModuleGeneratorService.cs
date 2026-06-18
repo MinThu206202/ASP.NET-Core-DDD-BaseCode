@@ -10,6 +10,6 @@ public interface IModuleGeneratorService
         bool runMigration = false,
         bool hasImage = false,
         bool runDbUpdate = false,
-        string? sidebarGroup = null
+        Guid? sidebarGroupId = null
     );
 }

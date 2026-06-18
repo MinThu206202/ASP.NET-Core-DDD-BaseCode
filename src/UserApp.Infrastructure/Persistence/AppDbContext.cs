@@ -17,6 +17,7 @@ using UserApp.Domain.Cars;
 using UserApp.Domain.Notifications;
 using UserApp.Domain.SidebarItems;
 using UserApp.Domain.Products;
+using UserApp.Domain.SidebarGroups;
 
 namespace UserApp.Infrastructure.Persistence;
 
@@ -53,6 +54,8 @@ public DbSet<Car> Cars => Set<Car>();
     public DbSet<SidebarItem> SidebarItems => Set<SidebarItem>();
 public DbSet<Notification> Notifications => Set<Notification>();
 public DbSet<Product> Products => Set<Product>();
+    public DbSet<SidebarGroup> SidebarGroups => Set<SidebarGroup>();
+
     // <AUTO-DBSETS-END>
 
 
@@ -69,6 +72,7 @@ public DbSet<Product> Products => Set<Product>();
 
         modelBuilder.ApplyConfiguration(new UserConfiguration());
         modelBuilder.ApplyConfiguration(new SidebarItemConfiguration());
+        modelBuilder.ApplyConfiguration(new SidebarGroupConfiguration());
 
         modelBuilder.Entity<UserRole>()
             .HasKey(x => new { x.UserId, x.RoleId });
