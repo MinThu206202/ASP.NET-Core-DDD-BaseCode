@@ -12,7 +12,7 @@ using UserApp.Infrastructure.Persistence;
 namespace UserApp.Infrastructure.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260615160223_Messenger_Auto")]
+    [Migration("20260615153945_Messenger_Auto")]
     partial class Messenger_Auto
     {
         /// <inheritdoc />
@@ -229,10 +229,11 @@ namespace UserApp.Infrastructure.Migrations
                     b.Property<DateTime?>("DeletedAt")
                         .HasColumnType("datetime(6)");
 
-                    b.Property<Guid>("MilkId")
-                        .HasColumnType("char(36)");
-
                     b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("longtext");
+
+                    b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("longtext");
 
