@@ -12,6 +12,6 @@ public class Product : Entity<Guid>, IHasMedia
     public int Quantity { get; set; }
     [Column("Category_id")]
     public Guid CategoryId { get; set; }
-    public Category Category { get; set; }
+    public Category Category { get; set; } = null!;
 
 }

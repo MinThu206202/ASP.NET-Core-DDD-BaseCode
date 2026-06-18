@@ -8,7 +8,6 @@ using UserApp.Infrastructure.Identity;
 using UserApp.Infrastructure.Persistence;
 using UserApp.Infrastructure.Persistence.Repositories;
 using UserApp.Infrastructure.Persistence.Seed;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
 using UserApp.Domain.Roles;
 

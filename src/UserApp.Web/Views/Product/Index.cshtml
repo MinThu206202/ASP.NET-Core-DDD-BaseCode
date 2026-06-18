@@ -62,14 +62,14 @@
 
                         <td class="px-6 py-4 text-right">
                             <div class="flex items-center justify-end gap-2">
-                                <a asp-action="Details" asp-route-id="@item.Id"
+                                <a asp-action="Details" asp-route-id="@p.Id"
                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
                                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                                     </svg>
                                     Details
                                 </a>
-                                <a asp-action="Edit" asp-route-id="@item.Id"
+                                <a asp-action="Edit" asp-route-id="@p.Id"
                                    class="inline-flex items-center gap-1.5 px-4 py-2 text-sm font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-xl transition-colors">
                                     Edit
                                 </a>

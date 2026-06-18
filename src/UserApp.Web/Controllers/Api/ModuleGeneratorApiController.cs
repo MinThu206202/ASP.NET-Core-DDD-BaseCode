@@ -17,13 +17,16 @@ public class ModuleGeneratorApiController : ControllerBase
 {
     private readonly IModuleGeneratorService _service;
     private readonly AppDbContext _db;
+    private readonly ISidebarGroupService _sidebarGroupService;
 
     public ModuleGeneratorApiController(
         IModuleGeneratorService service,
-        AppDbContext db)
+        AppDbContext db,
+        ISidebarGroupService sidebarGroupService)
     {
         _service = service;
         _db = db;
+        _sidebarGroupService = sidebarGroupService;
     }
 
     [HttpGet("tables")]
@@ -36,14 +39,6 @@ public class ModuleGeneratorApiController : ControllerBase
             .ToList();
 
         return Ok(ApiResponse<List<string>>.Ok(tables, "Tables retrieved successfully"));
-    private readonly ISidebarGroupService _sidebarGroupService;
-
-    public ModuleGeneratorApiController(
-        IModuleGeneratorService service,
-        ISidebarGroupService sidebarGroupService)
-    {
-        _service = service;
-        _sidebarGroupService = sidebarGroupService;
     }
 
     [HttpPost]
@@ -103,5 +98,4 @@ public class ModuleGeneratorApiController : ControllerBase
                 null,
                 $"{moduleName} module generated successfully"));
     }
-}
 }

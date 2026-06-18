@@ -8,17 +8,14 @@ using UserApp.Infrastructure.Persistence.Repositories;
 using UserApp.Domain.Common;
 using UserApp.Domain.Users;
 using UserApp.Application.Common;
-using UserApp.Application.Users.Interfaces;
-
 using UserApp.Application.Users;
+using UserApp.Application.Users.Interfaces;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Infrastructure.Media;
-using UserApp.Domain.Media;
-
 using UserApp.Domain.Media;
 using UserApp.Domain.Paps;
 using UserApp.Application.Paps;
@@ -33,7 +30,6 @@ using UserApp.Domain.Cocos;
 using UserApp.Application.Cocos;
 using UserApp.Application.Cocos.Interfaces;
 using UserApp.Domain.Roles;
-using UserApp.Infrastructure.Persistence.Repositories;
 using System.Security.Claims;
 using UserApp.Infrastructure.Security;
 using UserApp.Web.Common;
@@ -239,6 +235,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
+    // Sync migration history: mark auto-generated migrations as applied if their table already exists
+    await SyncMigrationHistoryAsync(db);
+
     await db.Database.MigrateAsync();
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedRolesAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
@@ -259,6 +258,69 @@ using (var scope = app.Services.CreateScope())
         EXECUTE s;
         DEALLOCATE PREPARE s;
     ");
+}
+
+static async Task SyncMigrationHistoryAsync(AppDbContext db)
+{
+    // Sync auto-generated table migrations (create if table already exists)
+    try
+    {
+        await db.Database.ExecuteSqlRawAsync(@"
+            SET @mid = '20260615153945_Messenger_Auto', @table = 'Messengers';
+            SET @cnt = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @table);
+            SET @stmt = IF(@cnt > 0, CONCAT('INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES (''', @mid, ''', ''8.0.0'')'), 'SELECT 1');
+            PREPARE s FROM @stmt; EXECUTE s; DEALLOCATE PREPARE s;
+
+            SET @mid = '20260616154621_Car_Auto', @table = 'Cars';
+            SET @cnt = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @table);
+            SET @stmt = IF(@cnt > 0, CONCAT('INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES (''', @mid, ''', ''8.0.0'')'), 'SELECT 1');
+            PREPARE s FROM @stmt; EXECUTE s; DEALLOCATE PREPARE s;
+
+            SET @mid = '20260616154702_Notification_Auto', @table = 'Notifications';
+            SET @cnt = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @table);
+            SET @stmt = IF(@cnt > 0, CONCAT('INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES (''', @mid, ''', ''8.0.0'')'), 'SELECT 1');
+            PREPARE s FROM @stmt; EXECUTE s; DEALLOCATE PREPARE s;
+
+            SET @mid = '20260617164437_Product_Auto', @table = 'Products';
+            SET @cnt = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @table);
+            SET @stmt = IF(@cnt > 0, CONCAT('INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES (''', @mid, ''', ''8.0.0'')'), 'SELECT 1');
+            PREPARE s FROM @stmt; EXECUTE s; DEALLOCATE PREPARE s;
+        ");
+    }
+    catch { }
+
+    // Handle DropProductsTable: drop old Products table and mark migration as applied
+    try
+    {
+        var applied = (await db.Database.GetAppliedMigrationsAsync()).ToHashSet();
+        if (!applied.Contains("20260617162359_DropProductsTable"))
+        {
+            // Drop old Products table if it still exists (bypass FK checks)
+            await db.Database.ExecuteSqlRawAsync(@"
+                SET FOREIGN_KEY_CHECKS = 0;
+                SET @has_old = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Products');
+                SET @has_status = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'Products' AND COLUMN_NAME = 'Status');
+                SET @drop_stmt = IF(@has_old > 0 AND @has_status > 0, 'DROP TABLE IF EXISTS `Products`', 'SELECT 1');
+                PREPARE s FROM @drop_stmt; EXECUTE s; DEALLOCATE PREPARE s;
+                SET FOREIGN_KEY_CHECKS = 1;
+            ");
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES ('20260617162359_DropProductsTable', '8.0.0')");
+        }
+    }
+    catch { }
+
+    // Mark DropCategoryPriceAndDescription as applied (no-op if columns already adjusted)
+    try
+    {
+        var applied = (await db.Database.GetAppliedMigrationsAsync()).ToHashSet();
+        if (!applied.Contains("20260617163210_DropCategoryPriceAndDescription"))
+        {
+            await db.Database.ExecuteSqlRawAsync(
+                "INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES ('20260617163210_DropCategoryPriceAndDescription', '8.0.0')");
+        }
+    }
+    catch { }
 }
 
 static async Task SeedSidebarGroups(AppDbContext db)

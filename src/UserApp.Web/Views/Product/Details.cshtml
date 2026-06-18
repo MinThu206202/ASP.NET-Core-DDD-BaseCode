@@ -1,5 +1,4 @@
-@model ProductViewModel
-@using UserApp.Web.ViewModels.Products
+@model UserApp.Web.ViewModels.ProductViewModel
 
 <div class="max-w-2xl mx-auto animate-fade-in">
     <div class="mb-8">
@@ -21,13 +20,13 @@
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-slate-500 mb-1">Status</label>
-                <p class="text-slate-800 font-semibold">@Model.StatusName</p>
+                <label class="block text-sm font-bold text-slate-500 mb-1">Price</label>
+                <p class="text-slate-800 font-semibold">@Model.Price</p>
             </div>
 
             <div>
-                <label class="block text-sm font-bold text-slate-500 mb-1">Payment</label>
-                <p class="text-slate-800 font-semibold">@Model.PaymetName</p>
+                <label class="block text-sm font-bold text-slate-500 mb-1">Description</label>
+                <p class="text-slate-800 font-semibold">@Model.Description</p>
             </div>
         </div>
 

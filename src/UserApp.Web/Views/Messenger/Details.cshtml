@@ -40,24 +40,7 @@
                 }
             }
 
-            @if (Model.MediaList.Count > 0)
-            {
-                <div>
-                    <label class="block text-sm font-bold text-slate-500 mb-3">Images</label>
-                    <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        @foreach (var media in Model.MediaList)
-                        {
-                            <div class="bg-slate-50 rounded-xl border border-slate-200 p-2">
-                                <div class="relative aspect-square rounded-lg overflow-hidden bg-slate-100">
-                                    <img src="@media.Url" alt="@media.OriginalName"
-                                         class="w-full h-full object-cover" />
-                                </div>
-                                <p class="mt-2 text-xs text-slate-500 truncate px-1">@media.OriginalName</p>
-                            </div>
-                        }
-                    </div>
-                </div>
-            }
+
         </div>
 
         <div class="flex items-center gap-3 mt-8 pt-6 border-t border-slate-100">
