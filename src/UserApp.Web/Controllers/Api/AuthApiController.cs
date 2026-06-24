@@ -139,7 +139,7 @@ public class AuthApiController : ControllerBase
 
         if (storedToken == null ||
             storedToken.IsRevoked ||
-            storedToken.ExpiresAt < DateTime.UtcNow)
+            storedToken.ExpiresAt < TimeHelper.Now)
         {
             return Unauthorized(ApiResponse<object>.Fail("Invalid refresh token"));
         }
@@ -196,7 +196,7 @@ public class AuthApiController : ControllerBase
             issuer: _config["Jwt:Issuer"],
             audience: _config["Jwt:Audience"],
             claims: claims,
-            expires: DateTime.UtcNow.AddHours(1),
+            expires: TimeHelper.Now.AddHours(1),
             signingCredentials: new SigningCredentials(
                 new SymmetricSecurityKey(key),
                 SecurityAlgorithms.HmacSha256

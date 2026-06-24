@@ -27,7 +27,7 @@ public class User : Entity<Guid>, IAggregateRoot
             FullName = fullName.Trim(),
             PasswordHash = passwordHash,
             Status = UserStatus.Active,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = TimeHelper.Now
         };
     }
 
@@ -36,24 +36,24 @@ public class User : Entity<Guid>, IAggregateRoot
         if (string.IsNullOrWhiteSpace(fullName))
             throw new ArgumentException("Full name is required", nameof(fullName));
         FullName = fullName.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = TimeHelper.Now;
     }
 
     public void ChangeEmail(Email email)
     {
         Email = email;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = TimeHelper.Now;
     }
 
     public void Deactivate()
     {
         Status = UserStatus.Inactive;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = TimeHelper.Now;
     }
 
     public void Activate()
     {
         Status = UserStatus.Active;
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = TimeHelper.Now;
     }
 }

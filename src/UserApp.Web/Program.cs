@@ -80,6 +80,9 @@ using UserApp.Application.OrderDetails.Interfaces;
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
 // <AUTO-USINGS-END>
+using UserApp.Domain.AuditLogs;
+using UserApp.Application.AuditLogs;
+using UserApp.Application.AuditLogs.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -165,6 +168,10 @@ builder.Services.AddScoped<IMediaService, MediaService>();
 builder.Services.AddScoped<IPermissionService, PermissionService>();
 builder.Services.AddScoped<IPermissionChecker, PermissionChecker>();
 builder.Services.AddScoped<IRefreshTokenRepository, RefreshTokenRepository>();
+
+builder.Services.AddScoped<IAuditLogRepository, AuditLogRepository>();
+builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<
     UserApp.Application.Common.Interfaces.IModuleGeneratorService,
     UserApp.Infrastructure.Services.ModuleGeneratorService>();
@@ -173,9 +180,11 @@ builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
 
 
 builder.Services.AddScoped<PermissionFilter>();
+builder.Services.AddScoped<AuditContextActionFilter>();
 builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.AddService<PermissionFilter>();
+    options.Filters.AddService<AuditContextActionFilter>();
 }).AddJsonOptions(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
@@ -395,6 +404,7 @@ static async Task SeedSidebarItems(AppDbContext db)
         ("Roles",         "Roles",       "System",      2),
         ("Permissions",   "Permissions", "System",      3),
         ("Module Generator", "ModuleGenerator", "System", 4),
+        ("Audit Log", "AuditLog", "System", 5),
     };
 
     foreach (var (moduleName, controllerName, groupName, order) in items)

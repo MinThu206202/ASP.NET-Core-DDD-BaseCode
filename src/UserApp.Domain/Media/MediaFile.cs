@@ -1,3 +1,5 @@
+using UserApp.Domain.Common;
+
 namespace UserApp.Domain.Media;
 
 public class MediaFile
@@ -10,5 +12,5 @@ public class MediaFile
     public string OriginalName { get; set; } = string.Empty;
     public string MimeType { get; set; } = string.Empty;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = TimeHelper.Now;
 }

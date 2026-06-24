@@ -22,6 +22,8 @@ using UserApp.Domain.Products;
 using UserApp.Domain.Customers;
 using UserApp.Domain.Orders;
 using UserApp.Domain.OrderDetails;
+using UserApp.Domain.AuditLogs;
+using UserApp.Web.ViewModels.AuditLogs;
 
 
 
@@ -81,6 +83,7 @@ CreateMap<Order, OrderViewModel>();
 CreateMap<OrderViewModel, Order>();
 CreateMap<OrderDetail, OrderDetailViewModel>();
 CreateMap<OrderDetailViewModel, OrderDetail>();
+        CreateMap<AuditLog, AuditLogViewModel>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();

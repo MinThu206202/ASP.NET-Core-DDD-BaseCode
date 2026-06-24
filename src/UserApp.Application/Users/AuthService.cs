@@ -99,9 +99,9 @@ public class AuthService : IAuthService
         {
             UserId = userId,
             Token = token,
-            ExpiresAt = DateTime.UtcNow.AddDays(7),
+            ExpiresAt = TimeHelper.Now.AddDays(7),
             IsRevoked = false,
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = TimeHelper.Now
         };
 
         await _refreshTokenRepository.AddAsync(refreshToken);

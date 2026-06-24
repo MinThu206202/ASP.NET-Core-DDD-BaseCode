@@ -24,7 +24,7 @@ public class Role : Entity<Guid>
         {
             Id = Guid.NewGuid(),
             Name = name.Trim(),
-            CreatedAt = DateTime.UtcNow
+            CreatedAt = TimeHelper.Now
         };
     }
 
@@ -35,6 +35,6 @@ public class Role : Entity<Guid>
             throw new ArgumentException("Role name cannot be empty");
 
         Name = newName.Trim();
-        UpdatedAt = DateTime.UtcNow;
+        UpdatedAt = TimeHelper.Now;
     }
 }

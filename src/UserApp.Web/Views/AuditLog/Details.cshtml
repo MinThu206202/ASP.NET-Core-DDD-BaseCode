@@ -1,0 +1,113 @@
+@model UserApp.Web.ViewModels.AuditLogs.AuditLogViewModel
+
+<div class="animate-fade-in max-w-4xl mx-auto">
+    <a asp-action="Index" class="inline-flex items-center gap-1.5 text-sm font-bold text-slate-500 hover:text-indigo-600 mb-6 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+        </svg>
+        Back to Audit Logs
+    </a>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="px-8 py-6 border-b border-slate-100">
+            <h1 class="text-2xl font-black text-slate-800">Audit Log Detail</h1>
+        </div>
+
+        <div class="px-8 py-6 space-y-6">
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">User</label>
+                    <p class="text-sm font-semibold text-slate-800">@Model.UserName</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Action</label>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold
+                        @(Model.Action switch
+                        {
+                            "Create" => "bg-green-100 text-green-700",
+                            "Update" => "bg-amber-100 text-amber-700",
+                            "Delete" => "bg-rose-100 text-rose-700",
+                            _ => "bg-slate-100 text-slate-600"
+                        })">
+                        @Model.Action
+                    </span>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Entity</label>
+                    <p class="text-sm font-semibold text-slate-800">@Model.EntityName</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Entity ID</label>
+                    <p class="text-sm font-mono text-slate-800">@Model.EntityId</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Page</label>
+                    <p class="text-sm text-slate-800">@Model.PageName</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Function</label>
+                    <p class="text-sm text-slate-800">@Model.FunctionName</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Timestamp</label>
+                    <p class="text-sm text-slate-800">@Model.CreatedAt.ToString("yyyy-MM-dd HH:mm:ss")</p>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Changed Fields</label>
+                    @if (!string.IsNullOrEmpty(Model.AffectedColumns))
+                    {
+                        var cols = System.Text.Json.JsonSerializer.Deserialize<List<string>>(Model.AffectedColumns);
+                        if (cols != null)
+                        {
+                            <div class="flex flex-wrap gap-1 mt-1">
+                            @foreach (var col in cols)
+                            {
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-indigo-50 text-indigo-600">@col</span>
+                            }
+                            </div>
+                        }
+                    }
+                    else
+                    {
+                        <p class="text-sm text-slate-400">—</p>
+                    }
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-6 pt-4 border-t border-slate-100">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Old Values</label>
+                    @if (!string.IsNullOrEmpty(Model.OldValues))
+                    {
+                        <pre class="text-xs text-slate-600 bg-slate-50 rounded-xl p-4 border border-slate-200 overflow-x-auto whitespace-pre-wrap">@Model.OldValues</pre>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-slate-400">—</p>
+                    }
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">New Values</label>
+                    @if (!string.IsNullOrEmpty(Model.NewValues))
+                    {
+                        <pre class="text-xs text-slate-600 bg-slate-50 rounded-xl p-4 border border-slate-200 overflow-x-auto whitespace-pre-wrap">@Model.NewValues</pre>
+                    }
+                    else
+                    {
+                        <p class="text-sm text-slate-400">—</p>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .animate-fade-in {
+        animation: fadeIn 0.4s ease-out;
+    }
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+</style>

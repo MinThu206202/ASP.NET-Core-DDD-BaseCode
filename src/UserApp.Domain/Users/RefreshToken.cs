@@ -1,3 +1,5 @@
+using UserApp.Domain.Common;
+
 namespace UserApp.Domain.Users;
 
 public class RefreshToken
@@ -8,7 +10,7 @@ public class RefreshToken
 
     public string Token { get; set; } = default!;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime CreatedAt { get; set; } = TimeHelper.Now;
 
     public DateTime ExpiresAt { get; set; }
 
