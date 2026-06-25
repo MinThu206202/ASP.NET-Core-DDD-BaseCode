@@ -1,6 +1,7 @@
+using System.Text.Json;
 using UserApp.Domain.Common;
 using UserApp.Application.Common.Interfaces;
-
+using UserApp.Application.AuditLogs.Interfaces;
 
 namespace UserApp.Application.Common;
 
@@ -28,18 +29,13 @@ public class BaseService<T> : IBaseService<T> where T : class
 
         await _repo.AddAsync(entity);
 
-        // 🔥 FIRST SAVE so ID exists
         await _repo.SaveChangesAsync();
 
-        // THEN media only for entities that explicitly support media
         if (entity is IHasMedia && _mediaPipeline != null && file != null)
         {
             await _mediaPipeline.HandleCreateAsync(typeof(T).Name, entity, file);
-            // 🔥 SAVE MEDIA
             await _repo.SaveChangesAsync();
         }
-
-
     }
 
     public virtual async Task UpdateAsync(T entity, object? file = null)
@@ -49,13 +45,11 @@ public class BaseService<T> : IBaseService<T> where T : class
 
         _repo.Update(entity);
 
-        // 🔥 HANDLE MEDIA FIRST (track changes in same context)
         if (entity is IHasMedia && _mediaPipeline != null && file != null)
         {
             await _mediaPipeline.HandleUpdateAsync(typeof(T).Name, entity, file);
         }
 
-        // 🔥 SAVE EVERYTHING TOGETHER
         await _repo.SaveChangesAsync();
     }
 
@@ -64,12 +58,63 @@ public class BaseService<T> : IBaseService<T> where T : class
         if (entity == null)
             throw new ArgumentNullException(nameof(entity));
 
-        if (entity is IHasMedia && _mediaPipeline != null)
+        if (entity is Entity<Guid> softDeletable)
         {
-            await _mediaPipeline.HandleDeleteAsync(typeof(T).Name, entity);
+            softDeletable.Delete();
+        }
+        else
+        {
+            if (entity is IHasMedia && _mediaPipeline != null)
+            {
+                await _mediaPipeline.HandleDeleteAsync(typeof(T).Name, entity);
+            }
+            _repo.Remove(entity);
+        }
+        await _repo.SaveChangesAsync();
+    }
+
+    public async Task RestoreAsync(Guid id)
+    {
+        var entity = await _repo.GetByIdAsync(id);
+        if (entity is Entity<Guid> softDeletable)
+        {
+            softDeletable.Restore();
+            await _repo.SaveChangesAsync();
+        }
+    }
+
+    public async Task RevertFromAuditAsync(Guid auditLogId)
+    {
+        var auditLogService = ServiceProviderAccessor.Current?.GetService(typeof(IAuditLogService)) as IAuditLogService;
+        if (auditLogService == null) return;
+
+        var auditLog = await auditLogService.GetByIdAsync(auditLogId);
+        if (auditLog == null || string.IsNullOrEmpty(auditLog.OldValues))
+            throw new InvalidOperationException("Audit log not found or has no old values to revert");
+
+        var entity = await _repo.GetByIdAsync(Guid.Parse(auditLog.EntityId));
+        if (entity == null)
+            throw new InvalidOperationException("Entity not found");
+
+        var oldValues = JsonSerializer.Deserialize<Dictionary<string, JsonElement>>(auditLog.OldValues);
+        if (oldValues == null) return;
+
+        foreach (var (key, value) in oldValues)
+        {
+            var prop = typeof(T).GetProperty(key);
+            if (prop == null || !prop.CanWrite) continue;
+
+            if (value.ValueKind == JsonValueKind.Null)
+            {
+                prop.SetValue(entity, null);
+            }
+            else
+            {
+                var converted = JsonSerializer.Deserialize(value.GetRawText(), prop.PropertyType);
+                prop.SetValue(entity, converted);
+            }
         }
 
-        _repo.Remove(entity);
         await _repo.SaveChangesAsync();
     }
 

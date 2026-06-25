@@ -1,0 +1,23 @@
+@model string
+@if (string.IsNullOrEmpty(Model))
+{
+    <p class="text-sm text-slate-400">—</p>
+    return;
+}
+@{
+    var dict = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, object?>>(Model);
+}
+@if (dict == null || dict.Count == 0)
+{
+    <p class="text-sm text-slate-400">—</p>
+    return;
+}
+<div class="space-y-1.5">
+@foreach (var kvp in dict)
+{
+    <div class="flex items-start gap-2 text-sm">
+        <span class="font-semibold text-slate-500 min-w-[100px] py-1">@kvp.Key</span>
+        <span class="text-slate-700 bg-white rounded-lg px-2.5 py-1 border border-slate-200 flex-1">@(kvp.Value?.ToString() ?? "<null>")</span>
+    </div>
+}
+</div>

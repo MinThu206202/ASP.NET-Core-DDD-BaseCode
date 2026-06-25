@@ -98,6 +98,7 @@
                         <span class="text-xs text-slate-400">Supports JPG, PNG, WEBP &bull; Max 5MB each</span>
                     </div>
                 </div>
+                <div id="filePreview" class="grid grid-cols-3 gap-2 mt-2"></div>
                 @Html.ValidationMessage("files", new { @class = "text-xs text-rose-500 mt-1" })
             </div>
 
@@ -137,9 +138,16 @@
     <script>
         function updateFileLabel(input) {
             const label = document.getElementById('fileLabel');
-            label.textContent = input.files.length > 0
-                ? input.files.length + ' file(s) selected'
-                : 'Choose images or drag here';
+            const preview = document.getElementById('filePreview');
+            const count = input.files.length;
+            label.textContent = count > 0 ? count + ' file(s) selected' : 'Choose images or drag here';
+            preview.innerHTML = '';
+            Array.from(input.files).forEach(file => {
+                const img = document.createElement('img');
+                img.src = URL.createObjectURL(file);
+                img.className = 'w-full h-20 object-cover rounded-lg border border-slate-200';
+                preview.appendChild(img);
+            });
         }
         function deleteMedia(mediaId, btn) {
             if (!confirm('Delete this image?')) return;

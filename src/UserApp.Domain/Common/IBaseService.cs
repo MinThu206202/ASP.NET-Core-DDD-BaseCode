@@ -9,6 +9,8 @@ public interface IBaseService<T>
     Task AddAsync(T entity, object? file = null);
     Task UpdateAsync(T entity, object? file = null);
     Task RemoveAsync(T entity);
+    Task RestoreAsync(Guid id);
+    Task RevertFromAuditAsync(Guid auditLogId);
     Task<List<string>> GetImageUrlsAsync(Guid id);
 
     Task SaveAsync();

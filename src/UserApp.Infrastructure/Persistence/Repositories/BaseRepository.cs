@@ -21,12 +21,26 @@ public class BaseRepository<T> : IBaseRepository<T> where T : class
 
     public virtual async Task<List<T>> ListAsync(int skip, int take)
     {
-        return await _set.Skip(skip).Take(take).ToListAsync();
+        var query = _set.AsQueryable();
+
+        if (typeof(T).GetProperty("DeletedAt")?.PropertyType == typeof(DateTime?))
+        {
+            query = query.Where(e => EF.Property<DateTime?>(e, "DeletedAt") == null);
+        }
+
+        return await query.Skip(skip).Take(take).ToListAsync();
     }
 
     public async Task<int> CountAsync()
     {
-        return await _set.CountAsync();
+        var query = _set.AsQueryable();
+
+        if (typeof(T).GetProperty("DeletedAt")?.PropertyType == typeof(DateTime?))
+        {
+            query = query.Where(e => EF.Property<DateTime?>(e, "DeletedAt") == null);
+        }
+
+        return await query.CountAsync();
     }
 
     public async Task AddAsync(T entity)

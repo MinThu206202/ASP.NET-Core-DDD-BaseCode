@@ -656,6 +656,15 @@ public abstract class BaseController<TEntity, TViewModel> : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Restore(Guid id)
+    {
+        await _service.RestoreAsync(id);
+        TempData["Success"] = "Record restored successfully.";
+        return RedirectToAction(nameof(Index));
+    }
+
     private async Task LoadChildDataAsync(Guid entityId)
     {
         var sp = HttpContext?.RequestServices;

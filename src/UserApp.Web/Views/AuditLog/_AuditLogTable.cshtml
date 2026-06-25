@@ -64,13 +64,51 @@
                     }
                 </td>
                 <td class="px-6 py-4 text-right">
-                    <a asp-action="Details" asp-route-id="@log.Id"
-                       class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
-                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        </svg>
-                        View
-                    </a>
+                    <div class="inline-flex items-center gap-1.5">
+                        <a asp-action="Details" asp-route-id="@log.Id"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                            View
+                        </a>
+                        @if (log.Action == "Delete")
+                        {
+                            <form asp-action="Restore" asp-route-id="@log.Id" method="post" class="inline">
+                                @Html.AntiForgeryToken()
+                                <button type="button"
+                                        data-confirm="Restore this @log.EntityName?"
+                                        data-confirm-title="Restore"
+                                        data-confirm-ok="Restore"
+                                        data-confirm-color="emerald"
+                                        data-loading-text="Restoring..."
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-emerald-600 bg-emerald-50 hover:bg-emerald-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                                    </svg>
+                                    Restore
+                                </button>
+                            </form>
+                        }
+                        @if (log.Action == "Update")
+                        {
+                            <form asp-action="Revert" asp-route-id="@log.Id" method="post" class="inline">
+                                @Html.AntiForgeryToken()
+                                <button type="button"
+                                        data-confirm="Revert this @log.EntityName to its previous values?"
+                                        data-confirm-title="Revert Changes"
+                                        data-confirm-ok="Revert"
+                                        data-confirm-color="orange"
+                                        data-loading-text="Reverting..."
+                                        class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-orange-600 bg-orange-50 hover:bg-orange-100 rounded-lg transition-colors">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/>
+                                    </svg>
+                                    Revert
+                                </button>
+                            </form>
+                        }
+                    </div>
                 </td>
             </tr>
 }
