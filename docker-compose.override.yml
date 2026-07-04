@@ -1,0 +1,23 @@
+services:
+  web:
+    # Use the full SDK image for development so we can run `dotnet watch` inside container
+    image: mcr.microsoft.com/dotnet/sdk:8.0
+    container_name: DotNet-Core-Basecode-web
+    working_dir: /src
+    tty: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:80"
+      # Keep the container-to-container connection to mysql service
+      ConnectionStrings__MySql: "server=DotNet-Core-Basecode-mysql;port=3306;database=userapp;user=userapp;password=userapp_pw"
+    ports:
+      - "5001:80"
+    volumes:
+      # mount source so changes are visible to the container immediately
+      - ./src:/src:cached
+      # share nuget packages cache between host and container to speed restores
+      - ~/.nuget/packages:/root/.nuget/packages:delegated
+    depends_on:
+      - mysql
+      - redis
+    entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80"]

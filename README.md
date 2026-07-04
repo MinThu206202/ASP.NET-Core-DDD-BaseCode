@@ -93,6 +93,22 @@ dotnet run --project src/UserApp.Web
 Open http://localhost:5080 — you'll see the home page. Click **Manage Users**
 to list, create, edit, and delete users.
 
+### Development with Docker (no image rebuilds)
+
+You can run the app in a development container that mounts the source and
+uses `dotnet watch` so code and view changes take effect without rebuilding
+the Docker image:
+
+```bash
+# Default compose will automatically pick up docker-compose.override.yml
+docker compose up
+
+# Or explicitly use the override file
+docker compose -f docker-compose.yml -f docker-compose.override.yml up
+```
+
+Open http://localhost:5001 (override maps port `5001:80`).
+
 ## Domain model highlights
 
 - `User` aggregate with private setters and factory `User.Create(...)`

@@ -27,27 +27,9 @@ using UserApp.Application.Roles.Interfaces;
 using UserApp.Application.Roles;
 using UserApp.Application.Permissions.Interfaces;
 using UserApp.Application.Permissions;
-using UserApp.Domain.Categorys;
-using UserApp.Application.Categorys;
-using UserApp.Application.Categorys.Interfaces;
 using UserApp.Domain.CommonTables;
 using UserApp.Application.CommonTables;
 using UserApp.Application.CommonTables.Interfaces;
-using UserApp.Domain.SidebarItems;
-using UserApp.Application.SidebarItems;
-using UserApp.Application.SidebarItems.Interfaces;
-using UserApp.Domain.SidebarGroups;
-using UserApp.Application.SidebarGroups;
-using UserApp.Application.SidebarGroups.Interfaces;
-using UserApp.Domain.Customers;
-using UserApp.Application.Customers;
-using UserApp.Application.Customers.Interfaces;
-using UserApp.Domain.Orders;
-using UserApp.Application.Orders;
-using UserApp.Application.Orders.Interfaces;
-using UserApp.Domain.OrderDetails;
-using UserApp.Application.OrderDetails;
-using UserApp.Application.OrderDetails.Interfaces;
 // ================= AUTO MODULE IMPORTS =================
 // <AUTO-USINGS-START>
 // <AUTO-USINGS-END>
@@ -76,6 +58,7 @@ var mapperConfiguration = new MapperConfiguration(
     NullLoggerFactory.Instance);
 
 builder.Services.AddSingleton(mapperConfiguration.CreateMapper());
+// Sidebar provider removed per request
 
 // ------------------------------------------------
 // REPOSITORIES
@@ -84,13 +67,10 @@ builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
 // ================= AUTO REPOSITORIES =================
 // <AUTO-REPOSITORIES-START>
-builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-builder.Services.AddScoped<ISidebarItemRepository, SidebarItemRepository>();
-builder.Services.AddScoped<ISidebarGroupRepository, SidebarGroupRepository>();
-builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
-builder.Services.AddScoped<IOrderRepository, OrderRepository>();
-builder.Services.AddScoped<IOrderDetailRepository, OrderDetailRepository>();
+// ================= AUTO REPOSITORIES =================
+// <AUTO-REPOSITORIES-START>
+builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
 
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
@@ -106,13 +86,7 @@ builder.Services.AddScoped(typeof(IBaseService<>), typeof(BaseService<>));
 
 // ================= AUTO SERVICES =================
 // <AUTO-SERVICES-START>
-builder.Services.AddScoped<ICategoryService, CategoryService>();
 builder.Services.AddScoped<ICommonTableService, CommonTableService>();
-builder.Services.AddScoped<ISidebarItemService, SidebarItemService>();
-builder.Services.AddScoped<ISidebarGroupService, SidebarGroupService>();
-builder.Services.AddScoped<ICustomerService, CustomerService>();
-builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IOrderDetailService, OrderDetailService>();
 
 // <AUTO-SERVICES-END>
 
@@ -133,16 +107,12 @@ builder.Services.AddHttpContextAccessor();
 var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "127.0.0.1:6379";
 builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
 builder.Services.AddScoped<IEmailService, EmailService>();
-builder.Services.AddScoped<
-    UserApp.Application.Common.Interfaces.IModuleGeneratorService,
-    UserApp.Infrastructure.Services.ModuleGeneratorService>();
 builder.Services.AddScoped<MediaStorage>();
 builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
 
-
 builder.Services.AddScoped<PermissionFilter>();
 builder.Services.AddScoped<AuditContextActionFilter>();
-builder.Services.AddControllersWithViews(options =>
+var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.AddService<PermissionFilter>();
     options.Filters.AddService<AuditContextActionFilter>();
@@ -230,6 +200,11 @@ builder.Services.AddQuartz(q =>
 
 builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 
+if (builder.Environment.IsDevelopment())
+{
+    mvcBuilder.AddRazorRuntimeCompilation();
+}
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
@@ -243,22 +218,7 @@ using (var scope = app.Services.CreateScope())
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedRolesAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedAdminRolePermissionsAsync(db);
-    await SeedFlashMessages(db);
-    await SeedSidebarGroups(db);
-    await SeedSidebarItems(db);
-
-    // Create FK if it doesn't exist (must be after SidebarGroups are seeded)
-    await db.Database.ExecuteSqlRawAsync(@"
-        SET @fk_exists = (SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLE_CONSTRAINTS
-            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'SidebarItems' AND CONSTRAINT_NAME = 'FK_SidebarItems_SidebarGroups_GroupId');
-        SET @stmt = IF(@fk_exists = 0,
-            'ALTER TABLE SidebarItems ADD CONSTRAINT FK_SidebarItems_SidebarGroups_GroupId FOREIGN KEY (GroupId) REFERENCES SidebarGroups(Id) ON DELETE CASCADE',
-            'SELECT 1'
-        );
-        PREPARE s FROM @stmt;
-        EXECUTE s;
-        DEALLOCATE PREPARE s;
-    ");
+    await UserApp.Infrastructure.Persistence.Seed.UserSeeder.SeedUsersAsync(scope.ServiceProvider);
 }
 
 static async Task SyncMigrationHistoryAsync(AppDbContext db)
@@ -282,107 +242,6 @@ static async Task SyncMigrationHistoryAsync(AppDbContext db)
         }
     }
     catch { }
-}
-
-static async Task SeedSidebarGroups(AppDbContext db)
-{
-    var existing = db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>()
-        .Select(x => x.Name)
-        .ToHashSet();
-
-    var groups = new (string name, int order)[]
-    {
-        ("Master Data", 1),
-        ("Commerce", 2),
-        ("Operations", 3),
-        ("Communication", 4),
-        ("AI", 5),
-        ("System", 6),
-    };
-
-    foreach (var (name, order) in groups)
-    {
-        if (existing.Contains(name)) continue;
-
-        db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>().Add(new()
-        {
-            Name = name,
-            DisplayOrder = order,
-            IsActive = true
-        });
-    }
-
-    await db.SaveChangesAsync();
-}
-
-static async Task SeedSidebarItems(AppDbContext db)
-{
-    var existing = db.Set<UserApp.Domain.SidebarItems.SidebarItem>()
-        .Select(x => x.ControllerName)
-        .ToHashSet();
-
-    var groupMap = db.Set<UserApp.Domain.SidebarGroups.SidebarGroup>()
-        .ToDictionary(x => x.Name, x => x.Id);
-
-    var items = new (string moduleName, string controllerName, string groupName, int order)[]
-    {
-        ("Common Tables", "CommonTable", "Master Data", 1),
-        ("Categories",    "Category",    "Master Data", 2),
-        ("Media",         "Media",       "Communication", 2),
-        ("Users",         "Users",       "System",      1),
-        ("Roles",         "Roles",       "System",      2),
-        ("Permissions",   "Permissions", "System",      3),
-        ("Module Generator", "ModuleGenerator", "System", 4),
-        ("Audit Log", "AuditLog", "System", 5),
-    };
-
-    foreach (var (moduleName, controllerName, groupName, order) in items)
-    {
-        if (existing.Contains(controllerName)) continue;
-
-        if (!groupMap.TryGetValue(groupName, out var groupId))
-            groupId = Guid.Empty;
-
-        db.Set<UserApp.Domain.SidebarItems.SidebarItem>().Add(new()
-        {
-            ModuleName = moduleName,
-            ControllerName = controllerName,
-            GroupId = groupId,
-            DisplayOrder = order,
-            IsActive = true
-        });
-    }
-
-    await db.SaveChangesAsync();
-}
-
-static async Task SeedFlashMessages(AppDbContext db)
-{
-    var existing = db.Set<UserApp.Domain.CommonTables.CommonTable>()
-        .Where(x => x.Type == "FlashMessage")
-        .Select(x => x.Code)
-        .ToHashSet();
-
-    var modules = new[] { "Category" };
-    var actions = new[] { "Create", "Edit", "Delete" };
-
-    foreach (var module in modules)
-    {
-        foreach (var action in actions)
-        {
-            var code = $"{module}{action}";
-            if (existing.Contains(code)) continue;
-
-            db.Set<UserApp.Domain.CommonTables.CommonTable>().Add(new()
-            {
-                Type = "FlashMessage",
-                Code = code,
-                Name = $"{module} {action.ToLower()} successfully"
-            });
-        }
-    }
-
-    await db.SaveChangesAsync();
 }
 
 await app.InitializeDatabaseAsync();

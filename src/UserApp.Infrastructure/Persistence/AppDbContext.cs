@@ -6,14 +6,7 @@ using UserApp.Domain.Users;
 using UserApp.Infrastructure.Persistence.Configurations;
 using MediaEntity = UserApp.Domain.Media.MediaFile;
 using UserApp.Domain.Roles;
-using UserApp.Domain.Categorys;
 using UserApp.Domain.CommonTables;
-
-using UserApp.Domain.SidebarItems;
-using UserApp.Domain.SidebarGroups;
-using UserApp.Domain.Customers;
-using UserApp.Domain.Orders;
-using UserApp.Domain.OrderDetails;
 using UserApp.Domain.AuditLogs;
 using UserApp.Application.Common;
 using UserApp.Domain.Common;
@@ -170,17 +163,7 @@ public class AppDbContext : DbContext
 
     // ================= AUTO DBSets =================
     // <AUTO-DBSETS-START>
-    public DbSet<Category> Categorys => Set<Category>();
-public DbSet<CommonTable> CommonTables => Set<CommonTable>();
-    
-    public DbSet<SidebarItem> SidebarItems => Set<SidebarItem>();
-    public DbSet<SidebarGroup> SidebarGroups => Set<SidebarGroup>();
-
-public DbSet<Customer> Customers => Set<Customer>();
-public DbSet<Order> Orders => Set<Order>();
-public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
-
-
+    public DbSet<CommonTable> CommonTables => Set<CommonTable>();
 
     // ==================== SYSTEM DBSets ====================
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
@@ -195,14 +178,10 @@ public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
         base.OnModelCreating(modelBuilder);
 
         // <AUTO-CONFIG-START>
-        modelBuilder.ApplyConfiguration(new OrderConfiguration());
-        modelBuilder.ApplyConfiguration(new OrderDetailConfiguration());
         // <AUTO-CONFIG-END>
 
         modelBuilder.ApplyConfiguration(new AuditLogArchiveConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
-        modelBuilder.ApplyConfiguration(new SidebarItemConfiguration());
-        modelBuilder.ApplyConfiguration(new SidebarGroupConfiguration());
 
         modelBuilder.Entity<UserRole>()
             .HasKey(x => new { x.UserId, x.RoleId });

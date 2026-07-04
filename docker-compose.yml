@@ -1,7 +1,23 @@
 services:
+  web:
+    build:
+      context: .
+      dockerfile: ./src/UserApp.Web/Dockerfile
+    container_name: DotNet-Core-Basecode-web
+    restart: unless-stopped
+    depends_on:
+      - mysql
+      - redis
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Production"
+      ASPNETCORE_URLS: "http://+:80"
+      # Connection string for container-to-container access (use mysql service name)
+      ConnectionStrings__MySql: "server=DotNet-Core-Basecode-mysql;port=3306;database=userapp;user=userapp;password=userapp_pw"
+    ports:
+      - "5001:80"
   redis:
     image: redis:7-alpine
-    container_name: userapp-redis
+    container_name: DotNet-Core-Basecode-redis
     restart: unless-stopped
     ports:
       - "6379:6379"
@@ -13,7 +29,7 @@ services:
 
   mysql:
     image: mysql:8.0
-    container_name: userapp-mysql
+    container_name: DotNet-Core-Basecode-mysql
     restart: unless-stopped
     environment:
       MYSQL_ROOT_PASSWORD: rootpw

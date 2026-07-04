@@ -5,13 +5,8 @@ using UserApp.Application.Users.DTOs;
 using UserApp.Web.ViewModels.Roles;
 using UserApp.Domain.Roles;
 using UserApp.Web.ViewModels.Permissions;
-using UserApp.Domain.Categorys;
 using UserApp.Domain.CommonTables;
 using UserApp.Web.ViewModels.CommonTables;
-
-using UserApp.Domain.Customers;
-using UserApp.Domain.Orders;
-using UserApp.Domain.OrderDetails;
 using UserApp.Domain.AuditLogs;
 using UserApp.Web.ViewModels.AuditLogs;
 
@@ -47,14 +42,6 @@ public class MappingProfile : Profile
 
         CreateMap<CommonTable, CommonTableViewModel>();
         CreateMap<CommonTableViewModel, CommonTable>();
-CreateMap<Category, CategoryViewModel>();
-CreateMap<CategoryViewModel, Category>();
-CreateMap<Customer, CustomerViewModel>();
-CreateMap<CustomerViewModel, Customer>();
-CreateMap<Order, OrderViewModel>();
-CreateMap<OrderViewModel, Order>();
-CreateMap<OrderDetail, OrderDetailViewModel>();
-CreateMap<OrderDetailViewModel, OrderDetail>();
         CreateMap<AuditLog, AuditLogViewModel>();
         CreateMap<AuditLogArchive, AuditLogViewModel>();
 
