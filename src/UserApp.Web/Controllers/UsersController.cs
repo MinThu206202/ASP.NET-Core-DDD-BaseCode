@@ -13,6 +13,7 @@ public class UsersController : BaseController<User, UserViewModel>
     private readonly IBaseRepository<Role> _roleRepo;
     private readonly IBaseRepository<UserRole> _userRoleRepo;
     //admin side
+    //side bar
 
     public UsersController(
         IUserService service,
