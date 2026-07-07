@@ -38,6 +38,9 @@ using UserApp.Application.AuditLogs;
 using UserApp.Application.AuditLogs.Interfaces;
 using Quartz;
 using UserApp.Web.Jobs;
+using System.Threading.RateLimiting;
+using FluentValidation;
+using FluentValidation.AspNetCore;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -106,6 +109,7 @@ builder.Services.AddHttpContextAccessor();
 
 var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "127.0.0.1:6379";
 builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
+builder.Services.AddSingleton<ICacheService, RedisCacheService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<MediaStorage>();
 builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
@@ -120,6 +124,9 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
 });
+
+builder.Services.AddFluentValidationAutoValidation();
+builder.Services.AddValidatorsFromAssemblyContaining<UserApp.Web.Validators.LoginViewModelValidator>();
 
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "THIS_IS_DEMO_SECRET_KEY_123456";
 var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
@@ -184,6 +191,37 @@ builder.Services.AddCors(options =>
 });
 
 // ------------------------------------------------
+// Rate Limiting (IP-based sliding window for auth endpoints)
+// ------------------------------------------------
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+
+    options.AddPolicy("AuthPolicy", context =>
+    {
+        var ip = context.Request.Headers["X-Forwarded-For"].FirstOrDefault()
+                 ?? context.Connection.RemoteIpAddress?.ToString()
+                 ?? "unknown";
+
+        var path = context.Request.Path.Value?.ToLowerInvariant() ?? "";
+
+        int permitLimit = path switch
+        {
+            var p when p.Contains("forgot-password") || p.Contains("resend-otp") => 3,
+            var p when p.Contains("login") || p.Contains("register") => 5,
+            _ => 10
+        };
+
+        return RateLimitPartition.GetSlidingWindowLimiter(ip, _ => new SlidingWindowRateLimiterOptions
+        {
+            PermitLimit = permitLimit,
+            Window = TimeSpan.FromMinutes(1),
+            SegmentsPerWindow = 1
+        });
+    });
+});
+
+// ------------------------------------------------
 // Quartz Scheduled Job: AuditLog Archive at 09:00 daily
 // ------------------------------------------------
 builder.Services.AddQuartz(q =>
@@ -203,6 +241,12 @@ builder.Services.AddQuartzHostedService(q => q.WaitForJobsToComplete = true);
 if (builder.Environment.IsDevelopment())
 {
     mvcBuilder.AddRazorRuntimeCompilation();
+    builder.Services.AddMiniProfiler(options =>
+    {
+        options.RouteBasePath = "/profiler";
+        options.PopupShowTimeWithChildren = true;
+        options.PopupShowTrivial = false;
+    }).AddEntityFramework();
 }
 
 var app = builder.Build();
@@ -261,6 +305,13 @@ app.UseRouting();
 
 // 2. 🔥 ACTIVATE CORS MIDDLEWARE (MUST BE PLACED IN THIS EXACT ORDER)
 app.UseCors(myAllowSpecificOrigins);
+
+app.UseRateLimiter();
+
+if (app.Environment.IsDevelopment())
+{
+    app.UseMiniProfiler();
+}
 
 app.UseAuthentication();
 app.UseAuthorization();

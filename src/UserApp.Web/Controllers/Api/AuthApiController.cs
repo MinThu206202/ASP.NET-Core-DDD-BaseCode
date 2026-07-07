@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
@@ -17,6 +18,7 @@ namespace UserApp.Web.Controllers.Api;
 
 [Route("api/auth")]
 [ApiController]
+[EnableRateLimiting("AuthPolicy")]
 public class AuthApiController : ControllerBase
 {
     private const int MaxOtpAttempts = 5;
