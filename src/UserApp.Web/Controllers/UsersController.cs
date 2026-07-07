@@ -12,6 +12,7 @@ public class UsersController : BaseController<User, UserViewModel>
 {
     private readonly IBaseRepository<Role> _roleRepo;
     private readonly IBaseRepository<UserRole> _userRoleRepo;
+    //admin side
 
     public UsersController(
         IUserService service,
