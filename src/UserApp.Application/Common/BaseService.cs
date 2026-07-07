@@ -10,17 +10,41 @@ public class BaseService<T> : IBaseService<T> where T : class
     protected readonly IBaseRepository<T> _repo;
     protected readonly IMediaPipeline? _mediaPipeline;
     protected readonly IMediaService? _mediaService;
+    protected readonly ICacheService? _cache;
+    private static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(30);
+    private string CachePrefix => $"Entity:{typeof(T).Name}:";
+    private string CacheAllKey => $"{CachePrefix}All";
 
     public BaseService(IBaseRepository<T> repo)
     {
         _repo = repo;
-        _mediaPipeline = ServiceProviderAccessor.Current?.GetService(typeof(IMediaPipeline)) as IMediaPipeline;
-        _mediaService = ServiceProviderAccessor.Current?.GetService(typeof(IMediaService)) as IMediaService;
+        var sp = ServiceProviderAccessor.Current;
+        _mediaPipeline = sp?.GetService(typeof(IMediaPipeline)) as IMediaPipeline;
+        _mediaService = sp?.GetService(typeof(IMediaService)) as IMediaService;
+        _cache = sp?.GetService(typeof(ICacheService)) as ICacheService;
     }
 
-    public Task<T?> GetByIdAsync(Guid id) => _repo.GetByIdAsync(id);
-    public Task<List<T>> ListAsync(int skip, int take) => _repo.ListAsync(skip, take);
-    public Task<int> CountAsync() => _repo.CountAsync();
+    public virtual async Task<T?> GetByIdAsync(Guid id)
+    {
+        if (_cache == null)
+            return await _repo.GetByIdAsync(id);
+
+        return await _cache.GetOrCreateAsync($"{CachePrefix}{id}",
+            () => _repo.GetByIdAsync(id),
+            CacheTtl);
+    }
+
+    public virtual async Task<List<T>> ListAsync(int skip, int take)
+    {
+        if (_cache == null || skip != 0 || take < 999)
+            return await _repo.ListAsync(skip, take);
+
+        return await _cache.GetOrCreateAsync(CacheAllKey,
+            () => _repo.ListAsync(0, 999),
+            CacheTtl);
+    }
+
+    public virtual Task<int> CountAsync() => _repo.CountAsync();
 
     public virtual async Task AddAsync(T entity, object? file = null)
     {
@@ -30,6 +54,7 @@ public class BaseService<T> : IBaseService<T> where T : class
         await _repo.AddAsync(entity);
 
         await _repo.SaveChangesAsync();
+        await InvalidateCacheAsync();
 
         if (entity is IHasMedia && _mediaPipeline != null && file != null)
         {
@@ -51,9 +76,10 @@ public class BaseService<T> : IBaseService<T> where T : class
         }
 
         await _repo.SaveChangesAsync();
+        await InvalidateCacheAsync();
     }
 
-    public async Task RemoveAsync(T entity)
+    public virtual async Task RemoveAsync(T entity)
     {
         if (entity == null)
             throw new ArgumentNullException(nameof(entity));
@@ -71,15 +97,17 @@ public class BaseService<T> : IBaseService<T> where T : class
             _repo.Remove(entity);
         }
         await _repo.SaveChangesAsync();
+        await InvalidateCacheAsync();
     }
 
-    public async Task RestoreAsync(Guid id)
+    public virtual async Task RestoreAsync(Guid id)
     {
         var entity = await _repo.GetByIdAsync(id);
         if (entity is Entity<Guid> softDeletable)
         {
             softDeletable.Restore();
             await _repo.SaveChangesAsync();
+            await InvalidateCacheAsync();
         }
     }
 
@@ -128,4 +156,10 @@ public class BaseService<T> : IBaseService<T> where T : class
     }
 
     public Task SaveAsync() => _repo.SaveChangesAsync();
+
+    private async Task InvalidateCacheAsync()
+    {
+        if (_cache == null) return;
+        await _cache.RemoveAsync(CacheAllKey);
+    }
 }

@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using UserApp.Application.Users.DTOs;
 using UserApp.Application.Users.Interfaces;
 using UserApp.Web.ViewModels;
@@ -15,6 +16,7 @@ using UserApp.Application.Common.Interfaces;
 namespace UserApp.Web.Controllers;
 
 [AllowAnonymous]
+[EnableRateLimiting("AuthPolicy")]
 public class AuthController : Controller
 {
     private const int MaxOtpAttempts = 5;
