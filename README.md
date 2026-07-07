@@ -1,138 +1,180 @@
-# UserApp — Enterprise DDD (ASP.NET Core 8 Razor Pages + MySQL)
+# UserApp — Enterprise ASP.NET Core 8 Starter
 
-A clean, layered DDD starter for a **User module**: Razor Pages UI, EF Core
-with Pomelo MySQL provider, BCrypt password hashing, and a Docker Compose
-MySQL service you can browse with **MySQL Workbench**.
+A full-featured enterprise starter with **RBAC**, **audit logging**, **nginx reverse proxy**, and **Docker Compose** — all running with hot-reload for development.
 
-## Solution layout
+## Architecture
 
 ```
-UserApp.sln
-src/
-  UserApp.Domain         # Entities, Value Objects, Repository interfaces
-  UserApp.Application    # Use cases (UserService), DTOs, abstractions
-  UserApp.Infrastructure # EF Core DbContext, repositories, BCrypt hasher, DI
-  UserApp.Web            # ASP.NET Core Razor Pages (presentation)
-docker-compose.yml       # MySQL 8 for local dev
+                   ┌──────────┐
+                   │  nginx   │  (reverse proxy, port 5001)
+                   └────┬─────┘
+                        │
+                   ┌────▼─────┐
+                   │  Web     │  (ASP.NET Core 8 MVC)
+                   └────┬─────┘
+                        │
+              ┌─────────┼─────────┐
+              │         │         │
+         ┌────▼───┐ ┌──▼────┐ ┌──▼────┐
+         │ MySQL  │ │ Redis │ │ Quartz│
+         │  (8.0) │ │ (7)   │ │ Jobs  │
+         └────────┘ └───────┘ └───────┘
 ```
 
-Dependency direction: `Web → Infrastructure → Application → Domain`.
-Domain has zero outward dependencies.
+**Layers** (dependency flows inward):
+- `UserApp.Domain` — Entities, value objects, repository interfaces (zero dependencies)
+- `UserApp.Application` — Use cases, DTOs, service abstractions
+- `UserApp.Infrastructure` — EF Core, repositories, BCrypt, Quartz jobs
+- `UserApp.Web` — MVC controllers, views, API controllers
 
-## Prerequisites (macOS)
+## Features
 
-1. **.NET 8 SDK**
-   ```bash
-   brew install --cask dotnet-sdk
-   dotnet --version   # expect 8.x
-   ```
-2. **Docker Desktop for Mac** (Apple Silicon or Intel)
-   ```bash
-   brew install --cask docker
-   open -a Docker
-   ```
-3. **MySQL Workbench**
-   ```bash
-   brew install --cask mysqlworkbench
-   ```
-4. **EF Core CLI tool** (one-time, global)
-   ```bash
-   dotnet tool install --global dotnet-ef
-   ```
+| Feature | Details |
+|---------|---------|
+| **RBAC** | Roles, Permissions, Role-Permission mapping, PermissionFilter on every action |
+| **Audit Log** | Auto-logs all Create/Edit/Delete actions with old/new values & restore/revert |
+| **Common Tables** | Lookup/dictionary data management |
+| **Auth** | Cookie auth + JWT for API, forgot password, OTP verification |
+| **Soft Delete** | All entities support soft delete with restore |
+| **File Upload** | Per-entity media attachments (JPG/PNG/WEBP, 5MB limit) |
+| **Health Checks** | Every service has Docker health checks |
+| **Hot Reload** | `dotnet watch` — edit code, auto-restart |
+| **Reverse Proxy** | nginx handles incoming requests with proper headers |
+| **Redis** | Caching layer ready (StackExchange.Redis configured) |
+| **Quartz** | Scheduled jobs (audit log archiving) |
 
-## 1) Start MySQL with Docker
+## Quick Start
 
-From the project root:
+### Prerequisites
+
+- [Docker Desktop](https://docs.docker.com/desktop/) (with Compose v2)
+- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) (optional, for CLI commands)
+
+### 1. Start everything
 
 ```bash
+git clone <repo-url> && cd Basecode-ASP.NET-Core
 docker compose up -d
-docker compose ps     # mysql should be "healthy"
 ```
 
-Connection info (matches `appsettings.json`):
+Docker Compose starts 4 services:
 
-| Field    | Value         |
-|----------|---------------|
-| Host     | `127.0.0.1`   |
-| Port     | `3306`        |
-| Database | `userapp`     |
-| User     | `userapp`     |
-| Password | `userapp_pw`  |
-| Root pwd | `rootpw`      |
+| Service | Port | Credentials |
+|---------|------|-------------|
+| nginx | `5001` | — |
+| web | internal | — |
+| mysql | `3307` | see `.env` |
+| redis | `6379` | — |
 
-### Connect with MySQL Workbench
-- Open Workbench → **+** next to "MySQL Connections"
-- Connection Name: `UserApp Local`
-- Hostname: `127.0.0.1`, Port: `3306`
-- Username: `userapp` → click **Store in Keychain** → enter `userapp_pw`
-- **Test Connection** → **OK**
+### 2. Open the app
 
-## 2) Restore, build, migrate
+http://localhost:5001
+
+### 3. Log in
+
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@local.com` | `Admin123!` | Admin (full access) |
+| `user@local.com` | `User123!` | User (limited) |
+
+### 4. (First time only) Sync permissions
+
+After startup, go to **Role Permissions** in the sidebar and click **Sync** to scan all controllers and seed permissions into the database.
+
+## Configuration
+
+### Environment variables (`.env`)
 
 ```bash
-dotnet restore
-dotnet build
+COMPOSE_PROJECT_NAME=dotnet-core-basecode
 
-# Create initial migration (only the first time)
-dotnet ef migrations add Initial \
-  --project src/UserApp.Infrastructure \
-  --startup-project src/UserApp.Web
-
-# (Migrations also run automatically on app startup, but you can apply manually.)
-dotnet ef database update \
-  --project src/UserApp.Infrastructure \
-  --startup-project src/UserApp.Web
+# MySQL
+MYSQL_ROOT_PASSWORD=rootpw
+MYSQL_DATABASE=userapp
+MYSQL_USER=userapp
+MYSQL_PASSWORD=userapp_pw
 ```
 
-## 3) Run the web app
+> **Security:** Add `.env` to `.gitignore` in production. For local development the defaults work out of the box.
+
+### appsettings
+
+Override any setting via `appsettings.Development.json` or environment variables. Connection strings use the `ConnectionStrings__MySql` convention so Docker Compose injects them automatically.
+
+## Development
+
+### Hot reload
+
+The `web` service runs `dotnet watch run` with source mounted from `./src`. Any file change triggers an automatic rebuild and restart:
 
 ```bash
+docker compose up -d          # start with hot reload
+docker compose logs web -f    # watch for recompilation
+```
+
+### Run without Docker
+
+```bash
+# Start MySQL and Redis manually, then:
 dotnet run --project src/UserApp.Web
 ```
 
-Open http://localhost:5080 — you'll see the home page. Click **Manage Users**
-to list, create, edit, and delete users.
-
-### Development with Docker (no image rebuilds)
-
-You can run the app in a development container that mounts the source and
-uses `dotnet watch` so code and view changes take effect without rebuilding
-the Docker image:
+### EF Core migrations
 
 ```bash
-# Default compose will automatically pick up docker-compose.override.yml
-docker compose up
+# Create a migration
+docker compose exec web dotnet ef migrations add <Name> \
+  --project src/UserApp.Infrastructure
 
-# Or explicitly use the override file
-docker compose -f docker-compose.yml -f docker-compose.override.yml up
+# Apply (runs automatically on startup, but manual works too)
+docker compose exec web dotnet ef database update \
+  --project src/UserApp.Infrastructure
 ```
 
-Open http://localhost:5001 (override maps port `5001:80`).
-
-## Domain model highlights
-
-- `User` aggregate with private setters and factory `User.Create(...)`
-- `Email` value object (record) with validation
-- `UserStatus` enum, `IUserRepository` repository abstraction in Domain
-- EF Core configuration via `IEntityTypeConfiguration<User>` (snake_case columns)
-- BCrypt password hashing (`BCrypt.Net-Next`)
-
-## Useful commands
+### Useful commands
 
 ```bash
-# Stop / wipe MySQL
-docker compose down            # keep data
-docker compose down -v         # delete volume (fresh DB)
-
-# Add another migration after a domain change
-dotnet ef migrations add <Name> \
-  --project src/UserApp.Infrastructure \
-  --startup-project src/UserApp.Web
+docker compose ps             # check health status
+docker compose logs web -f    # follow web logs
+docker compose down           # stop (data persists)
+docker compose down -v        # stop + delete volumes (fresh DB)
 ```
 
-## Next steps
+## Project Structure
 
-- Add ASP.NET Core Identity or JWT auth on top of `User`
-- Domain events + MediatR for CQRS
-- FluentValidation for command validation
-- Unit tests project for `UserApp.Domain` and `UserApp.Application`
+```
+src/
+  UserApp.Domain/           Entities, value objects, repository interfaces
+  UserApp.Application/      Services, DTOs, interfaces
+  UserApp.Infrastructure/   EF Core DbContext, repositories, BCrypt, Quartz, seeding
+  UserApp.Web/
+    Controllers/            MVC + API controllers
+    Views/                  Razor views (Tailwind CSS)
+    ViewModels/             View models per module
+    Common/                 PermissionFilter, DynamicValidator
+    wwwroot/uploads/        File uploads
+nginx/
+  nginx.conf                Reverse proxy config
+docker-compose.yml          Full stack (dev mode, no build needed)
+.env                        Secrets
+```
+
+## API
+
+API endpoints live under `/api/` with JWT authentication. See the `Controllers/Api/` folder for available endpoints (`UsersApi`, `RolesApi`, `PermissionsApi`, `AuthApi`, `AuditLogApi`, `CommonTableApi`).
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Framework | ASP.NET Core 8 |
+| ORM | EF Core 8 + Pomelo MySQL |
+| Auth | Cookie + JWT Bearer |
+| Password | BCrypt (BCrypt.Net-Next) |
+| Caching | StackExchange.Redis |
+| Scheduler | Quartz.NET |
+| Mapping | AutoMapper |
+| Proxy | nginx (alpine) |
+| DB | MySQL 8.0 |
+| Cache | Redis 7 Alpine |
+| UI | Tailwind CSS, Bootstrap 5 |

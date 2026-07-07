@@ -1,20 +1,44 @@
 services:
+  nginx:
+    image: nginx:alpine
+    container_name: DotNet-Core-Basecode-nginx
+    ports:
+      - "5001:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      web:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
   web:
-    build:
-      context: .
-      dockerfile: ./src/UserApp.Web/Dockerfile
+    image: mcr.microsoft.com/dotnet/sdk:8.0
     container_name: DotNet-Core-Basecode-web
-    restart: unless-stopped
+    working_dir: /src
+    tty: true
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      ASPNETCORE_URLS: "http://+:80"
+      ConnectionStrings__MySql: "server=DotNet-Core-Basecode-mysql;port=3306;database=${MYSQL_DATABASE};user=${MYSQL_USER};password=${MYSQL_PASSWORD}"
+    volumes:
+      - ./src:/src:cached
+      - ~/.nuget/packages:/root/.nuget/packages:delegated
     depends_on:
       - mysql
       - redis
-    environment:
-      ASPNETCORE_ENVIRONMENT: "Production"
-      ASPNETCORE_URLS: "http://+:80"
-      # Connection string for container-to-container access (use mysql service name)
-      ConnectionStrings__MySql: "server=DotNet-Core-Basecode-mysql;port=3306;database=userapp;user=userapp;password=userapp_pw"
-    ports:
-      - "5001:80"
+    entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80"]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
   redis:
     image: redis:7-alpine
     container_name: DotNet-Core-Basecode-redis
@@ -32,16 +56,16 @@ services:
     container_name: DotNet-Core-Basecode-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: rootpw
-      MYSQL_DATABASE: userapp
-      MYSQL_USER: userapp
-      MYSQL_PASSWORD: userapp_pw
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     ports:
       - "3307:3306"
     volumes:
       - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-prootpw"]
+      test: ["CMD-SHELL", "mysqladmin ping -h localhost -uroot -p${MYSQL_ROOT_PASSWORD}"]
       interval: 10s
       timeout: 5s
       retries: 10
