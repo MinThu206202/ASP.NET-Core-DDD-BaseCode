@@ -8,7 +8,7 @@
     <div class="flex items-center justify-between mb-8">
         <div>
             <h1 class="text-3xl font-black text-slate-800 tracking-tight">@ViewData["Title"]</h1>
-            <p class="text-slate-500 text-sm mt-1">View system users and their authentication statuses Min Thu</p>
+            <p class="text-slate-500 text-sm mt-1">View system users and their authentication statuses</p>
         </div>
     </div>
 
@@ -67,13 +67,15 @@
                                 @u.CreatedAt.ToString("yyyy-MM-dd HH:mm")
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <a asp-action="ManageRoles" asp-route-userId="@u.Id"
-                                   class="inline-flex items-center gap-1 px-2.5 py-1.5 font-semibold text-xs text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 rounded-lg transition-colors">
-                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
-                                    </svg>
-                                    Roles
-                                </a>
+                                <div class="flex items-center justify-end gap-2">
+                                    <a asp-action="ManageRoles" asp-route-userId="@u.Id"
+                                       class="inline-flex items-center gap-1 px-2.5 py-1.5 font-semibold text-xs text-indigo-700 bg-indigo-50/50 hover:bg-indigo-50 border border-indigo-100 hover:border-indigo-200 rounded-lg transition-colors">
+                                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                                        </svg>
+                                        Roles
+                                    </a>
+                                </div>
                             </td>
                         </tr>
                     }

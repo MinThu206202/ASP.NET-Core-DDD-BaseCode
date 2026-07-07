@@ -55,6 +55,29 @@ public class UsersController : BaseController<User, UserViewModel>
         });
     }
 
+    public override Task<IActionResult> Create() => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Create(UserViewModel vm, List<IFormFile>? files = null)
+    {
+        await Task.CompletedTask;
+        return RedirectToAction(nameof(Index));
+    }
+
+    public override Task<IActionResult> Edit(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Edit(Guid id, UserViewModel vm, List<IFormFile>? files = null)
+    {
+        await Task.CompletedTask;
+        return RedirectToAction(nameof(Index));
+    }
+
+    public new Task<IActionResult> Delete(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+    public new Task<IActionResult> DeleteConfirmed(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
     public async Task<IActionResult> ManageRoles(Guid userId)
     {
         var user = await _service.GetByIdAsync(userId);

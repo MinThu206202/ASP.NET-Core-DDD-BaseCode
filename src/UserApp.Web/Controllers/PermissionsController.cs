@@ -22,6 +22,29 @@ public class PermissionsController
         _serviceProvider = serviceProvider;
     }
 
+    public override Task<IActionResult> Create() => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Create(PermissionViewModel vm, List<IFormFile>? files = null)
+    {
+        await Task.CompletedTask;
+        return RedirectToAction(nameof(Index));
+    }
+
+    public override Task<IActionResult> Edit(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ValidateAntiForgeryToken]
+    public override async Task<IActionResult> Edit(Guid id, PermissionViewModel vm, List<IFormFile>? files = null)
+    {
+        await Task.CompletedTask;
+        return RedirectToAction(nameof(Index));
+    }
+
+    public new Task<IActionResult> Delete(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
+    [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
+    public new Task<IActionResult> DeleteConfirmed(Guid id) => Task.FromResult<IActionResult>(RedirectToAction(nameof(Index)));
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Sync()
