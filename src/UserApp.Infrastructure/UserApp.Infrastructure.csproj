@@ -16,6 +16,7 @@
     <PackageReference Include="Pomelo.EntityFrameworkCore.MySql" Version="8.0.2" />
     <PackageReference Include="BCrypt.Net-Next" Version="4.0.3" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
+    <PackageReference Include="Markdig" Version="0.37.0" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\UserApp.Domain\UserApp.Domain.csproj" />
@@ -24,5 +25,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="EmailTemplates/**" CopyToOutputDirectory="PreserveNewest" />
+    <None Remove="EmailTemplates/**/*.md" />
+    <Content Include="EmailTemplates/**/*.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

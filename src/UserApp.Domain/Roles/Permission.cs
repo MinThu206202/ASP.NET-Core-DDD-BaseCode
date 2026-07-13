@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using UserApp.Domain.Common;
 
 namespace UserApp.Domain.Roles;
@@ -9,6 +10,7 @@ public class Permission : Entity<Guid>
     private readonly List<RolePermission> _rolePermissions = new();
     public IReadOnlyCollection<RolePermission> RolePermissions => _rolePermissions;
 
+    [JsonConstructor]
     private Permission() { }
 
     public static Permission Create(string name)

@@ -120,7 +120,25 @@ public class AuthController : Controller
         {
             await _authService.RegisterAsync(new RegisterDto(vm.Email, vm.FullName, vm.Password));
 
-            // 🔥 FIX: Explicitly target the Web Controller's Login view
+            try
+            {
+                var loginUrl = Url.Action("Login", "Auth", null, Request.Scheme) ?? "/Auth/Login";
+                await _emailService.SendTemplateAsync(
+                    vm.Email,
+                    "Welcome to UserApp",
+                    "RegistrationWelcome.md",
+                    new Dictionary<string, string>
+                    {
+                        ["FULLNAME"] = vm.FullName,
+                        ["LOGIN_URL"] = loginUrl,
+                        ["YEAR"] = DateTime.UtcNow.Year.ToString()
+                    });
+            }
+            catch
+            {
+                // Email failure does not block registration
+            }
+
             return RedirectToAction("Login", "Auth");
         }
         catch (Exception ex)
@@ -160,7 +178,7 @@ public class AuthController : Controller
             await _emailService.SendTemplateAsync(
                 vm.Email,
                 "Your Password Reset OTP",
-                "ForgotPasswordOtp.html",
+                "ForgotPasswordOtp.md",
                 new Dictionary<string, string>
                 {
                     ["OTP"] = otp,
@@ -317,7 +335,7 @@ public class AuthController : Controller
             await _emailService.SendTemplateAsync(
                 email,
                 "Your Password Reset OTP",
-                "ForgotPasswordOtp.html",
+                "ForgotPasswordOtp.md",
                 new Dictionary<string, string>
                 {
                     ["OTP"] = otp,
