@@ -36,7 +36,7 @@ services:
       - redis
     entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80", "--no-launch-profile"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health/ready"]
       interval: 15s
       timeout: 10s
       retries: 10

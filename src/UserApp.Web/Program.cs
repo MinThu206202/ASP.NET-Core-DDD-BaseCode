@@ -111,6 +111,15 @@ builder.Services.AddHttpContextAccessor();
 var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "127.0.0.1:6379";
 builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+
+// ------------------------------------------------
+// Health Checks
+// ------------------------------------------------
+var mysqlConn = builder.Configuration.GetConnectionString("MySql");
+builder.Services.AddHealthChecks()
+    .AddMySql(mysqlConn!, name: "mysql", tags: new[] { "db", "mysql" })
+    .AddRedis(redisConn, name: "redis", tags: new[] { "cache", "redis" });
+
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<MediaStorage>();
 builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
@@ -402,6 +411,32 @@ app.UseAuthorization();
 // ------------------------------------------------
 // ROUTES
 // ------------------------------------------------
+
+// Health check endpoints
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.ToString()
+            }),
+            totalDuration = report.TotalDuration.ToString()
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
+
+// Health check for Docker (simple 200 OK)
+app.MapHealthChecks("/health/ready");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Auth}/{action=Login}/{id?}"
