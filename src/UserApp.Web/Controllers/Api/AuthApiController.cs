@@ -122,6 +122,25 @@ public class AuthApiController : ControllerBase
                 new RegisterDto(req.Email, req.FullName, req.Password)
             );
 
+            try
+            {
+                var loginUrl = $"{Request.Scheme}://{Request.Host}/Auth/Login";
+                await _emailService.SendTemplateAsync(
+                    req.Email,
+                    "Welcome to UserApp",
+                    "RegistrationWelcome.md",
+                    new Dictionary<string, string>
+                    {
+                        ["FULLNAME"] = req.FullName,
+                        ["LOGIN_URL"] = loginUrl,
+                        ["YEAR"] = DateTime.UtcNow.Year.ToString()
+                    });
+            }
+            catch
+            {
+                // Email failure does not block registration
+            }
+
             return Ok(new ApiResponse<object>
             {
                 Success = true,
@@ -173,7 +192,7 @@ public class AuthApiController : ControllerBase
             await _emailService.SendTemplateAsync(
                 req.Email,
                 "Your Password Reset OTP",
-                "ForgotPasswordOtp.html",
+                "ForgotPasswordOtp.md",
                 new Dictionary<string, string>
                 {
                     ["OTP"] = otp,

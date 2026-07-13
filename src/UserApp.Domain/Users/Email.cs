@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 
 namespace UserApp.Domain.Users;
@@ -9,6 +10,7 @@ public sealed record Email
 
     public string Value { get; }
 
+    [JsonConstructor]
     private Email(string value) => Value = value;
 
     public static Email Create(string value)

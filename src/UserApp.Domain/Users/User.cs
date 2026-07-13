@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using UserApp.Domain.Common;
 using UserApp.Domain.Roles;
 
@@ -11,6 +12,7 @@ public class User : Entity<Guid>, IAggregateRoot
     public UserStatus Status { get; private set; }
     private readonly List<UserRole> _userRoles = new();
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles;
+    [JsonConstructor]
     private User() { }
 
     public static User Create(Email email, string fullName, string passwordHash)
