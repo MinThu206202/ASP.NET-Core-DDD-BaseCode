@@ -28,6 +28,7 @@ public class AuthController : Controller
     private readonly IBaseRepository<Role> _roleBaseRepository;
     private readonly IDistributedCache _cache;
     private readonly IEmailService _emailService;
+    private readonly IWebHostEnvironment _env;
 
     private static string OtpCodeKey(string email) => $"otp:{email.ToLower()}";
     private static string OtpAttemptsKey(string email) => $"otp_attempts:{email.ToLower()}";
@@ -38,13 +39,15 @@ public class AuthController : Controller
         IBaseRepository<UserRole> userRoleBaseRepository,
         IBaseRepository<Role> roleBaseRepository,
         IDistributedCache cache,
-        IEmailService emailService)
+        IEmailService emailService,
+        IWebHostEnvironment env)
     {
         _authService = authService;
         _userRoleBaseRepository = userRoleBaseRepository;
         _roleBaseRepository = roleBaseRepository;
         _cache = cache;
         _emailService = emailService;
+        _env = env;
     }
 
     [HttpGet]
@@ -188,7 +191,8 @@ public class AuthController : Controller
         }
         catch (Exception ex)
         {
-            TempData["DevOtp"] = otp;
+            if (_env.IsDevelopment())
+                TempData["DevOtp"] = otp;
         }
         return RedirectToAction("VerifyOtp", new { email, sent = true });
     }
@@ -344,7 +348,8 @@ public class AuthController : Controller
         }
         catch
         {
-            TempData["DevOtp"] = otp;
+            if (_env.IsDevelopment())
+                TempData["DevOtp"] = otp;
         }
 
         TempData["Success"] = "OTP code is resend to your mail";

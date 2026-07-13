@@ -14,6 +14,7 @@ using UserApp.Application.Users.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using UserApp.Application.Common;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Infrastructure.Media;
 using UserApp.Infrastructure.Services;
@@ -128,8 +129,52 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<UserApp.Web.Validators.LoginViewModelValidator>();
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "THIS_IS_DEMO_SECRET_KEY_123456";
+// ------------------------------------------------
+// Swagger / OpenAPI
+// ------------------------------------------------
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "UserApp API",
+        Version = "v1",
+        Description = "ASP.NET Core Clean Architecture API"
+    });
+
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your JWT token"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key is not configured. Set it in appsettings.Development.json or User Secrets.");
+
 var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+
+if (keyBytes.Length < 32)
+    throw new InvalidOperationException($"Jwt:Key must be at least 32 bytes (256 bits). Current length: {keyBytes.Length} bytes.");
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -298,7 +343,45 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Global exception handler (must be early in pipeline)
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+        
+        logger.LogError(exception, "Unhandled exception: {Message}", exception?.Message);
+
+        var isApiRequest = context.Request.Path.StartsWithSegments("/api") ||
+                          context.Request.Headers.Accept.ToString().Contains("application/json");
+
+        if (isApiRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "An unexpected error occurred. Please try again later."
+            });
+        }
+        else
+        {
+            context.Response.Redirect("/Error/500");
+        }
+    });
+});
+
 app.UseStaticFiles();
+
+// Swagger / OpenAPI
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "UserApp API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseRouting();
 

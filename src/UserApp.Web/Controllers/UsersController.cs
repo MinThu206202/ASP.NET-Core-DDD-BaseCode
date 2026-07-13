@@ -109,6 +109,7 @@ public class UsersController : BaseController<User, UserViewModel>
     }
 
     [HttpPost]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> ManageRoles(Guid userId, List<Guid> roleIds)
     {
         var user = await _service.GetByIdAsync(userId);

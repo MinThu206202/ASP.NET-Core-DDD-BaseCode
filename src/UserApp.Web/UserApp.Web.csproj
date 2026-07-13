@@ -25,5 +25,6 @@
     <PackageReference Include="MiniProfiler.EntityFrameworkCore" Version="4.5.4" />
     <PackageReference Include="Quartz" Version="3.18.1" />
     <PackageReference Include="Quartz.Extensions.Hosting" Version="3.18.1" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0" />
   </ItemGroup>
 </Project>
