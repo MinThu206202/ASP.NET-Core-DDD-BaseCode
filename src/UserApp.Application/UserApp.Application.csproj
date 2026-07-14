@@ -3,7 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <NuGetAudit>false</NuGetAudit>
+    <NuGetAudit>true</NuGetAudit>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\UserApp.Domain\UserApp.Domain.csproj" />

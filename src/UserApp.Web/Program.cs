@@ -69,13 +69,8 @@ builder.Services.AddSingleton(mapperConfiguration.CreateMapper());
 // ------------------------------------------------
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
-// ================= AUTO REPOSITORIES =================
 // <AUTO-REPOSITORIES-START>
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-// ================= AUTO REPOSITORIES =================
-// <AUTO-REPOSITORIES-START>
-builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -310,16 +305,16 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     // Sync migration history: mark auto-generated migrations as applied if their table already exists
-    await SyncMigrationHistoryAsync(db);
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await SyncMigrationHistoryAsync(db, logger);
 
-    await db.Database.MigrateAsync();
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedRolesAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedAdminRolePermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.UserSeeder.SeedUsersAsync(scope.ServiceProvider);
 }
 
-static async Task SyncMigrationHistoryAsync(AppDbContext db)
+static async Task SyncMigrationHistoryAsync(AppDbContext db, ILogger logger)
 {
     // Sync auto-generated table migrations (create if table already exists)
     try
@@ -327,7 +322,10 @@ static async Task SyncMigrationHistoryAsync(AppDbContext db)
         await db.Database.ExecuteSqlRawAsync(@"
         ");
     }
-    catch { }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to sync auto-generated table migrations");
+    }
 
     // Mark DropCategoryPriceAndDescription as applied (no-op if columns already adjusted)
     try
@@ -339,7 +337,10 @@ static async Task SyncMigrationHistoryAsync(AppDbContext db)
                 "INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES ('20260617163210_DropCategoryPriceAndDescription', '8.0.0')");
         }
     }
-    catch { }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to mark DropCategoryPriceAndDescription migration as applied");
+    }
 }
 
 await app.InitializeDatabaseAsync();
@@ -359,7 +360,7 @@ app.UseExceptionHandler(errorApp =>
     {
         var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
         var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
-        
+
         logger.LogError(exception, "Unhandled exception: {Message}", exception?.Message);
 
         var isApiRequest = context.Request.Path.StartsWithSegments("/api") ||

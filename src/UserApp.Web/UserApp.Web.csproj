@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UserSecretsId>userapp-web-secrets</UserSecretsId>
-    <NuGetAudit>false</NuGetAudit>
+    <NuGetAudit>true</NuGetAudit>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\UserApp.Application\UserApp.Application.csproj" />

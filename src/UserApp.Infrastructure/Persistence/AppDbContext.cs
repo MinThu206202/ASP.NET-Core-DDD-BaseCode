@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using System.Security.Claims;
 using System.Text.Json;
 using Microsoft.AspNetCore.Http;
@@ -208,5 +209,18 @@ public class AppDbContext : DbContext
             .HasOne(x => x.Permission)
             .WithMany(x => x.RolePermissions)
             .HasForeignKey(x => x.PermissionId);
+
+        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        {
+            if (typeof(Entity<Guid>).IsAssignableFrom(entityType.ClrType))
+            {
+                var param = Expression.Parameter(entityType.ClrType, "e");
+                var body = Expression.Equal(
+                    Expression.Property(param, "DeletedAt"),
+                    Expression.Constant(null, typeof(DateTime?)));
+                var lambda = Expression.Lambda(body, param);
+                entityType.SetQueryFilter(lambda);
+            }
+        }
     }
 }

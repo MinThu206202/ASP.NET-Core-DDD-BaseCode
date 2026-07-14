@@ -6,9 +6,13 @@ namespace UserApp.Domain.Users;
 
 public class User : Entity<Guid>, IAggregateRoot
 {
+    [JsonInclude]
     public Email Email { get; private set; } = default!;
+    [JsonInclude]
     public string FullName { get; private set; } = default!;
+    [JsonInclude]
     public string PasswordHash { get; private set; } = default!;
+    [JsonInclude]
     public UserStatus Status { get; private set; }
     private readonly List<UserRole> _userRoles = new();
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles;

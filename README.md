@@ -6,7 +6,7 @@ A full-featured enterprise starter with **RBAC**, **audit logging**, **nginx rev
 
 ```
                    ┌──────────┐
-                   │  nginx   │  (reverse proxy, port 5001)
+                    │  nginx   │  (reverse proxy, port `NGINX_PORT`)
                    └────┬─────┘
                         │
                    ┌────▼─────┐
@@ -59,16 +59,16 @@ docker compose up -d
 
 Docker Compose starts 4 services:
 
-| Service | Port | Credentials |
-|---------|------|-------------|
-| nginx | `5001` | — |
+| Service | Host Port | Credentials |
+|---------|-----------|-------------|
+| nginx | `NGINX_PORT` (default `5002`) | — |
 | web | internal | — |
-| mysql | `3307` | see `.env` |
-| redis | `6379` | — |
+| mysql | `MYSQL_PORT` (default `3308`) | see `.env` |
+| redis | `REDIS_PORT` (default `6380`) | — |
 
 ### 2. Open the app
 
-http://localhost:5001
+http://localhost:5002
 
 ### 3. Log in
 
@@ -93,6 +93,11 @@ MYSQL_ROOT_PASSWORD=rootpw
 MYSQL_DATABASE=userapp
 MYSQL_USER=userapp
 MYSQL_PASSWORD=userapp_pw
+
+# Host ports (change if conflicting with other projects)
+MYSQL_PORT=3308
+REDIS_PORT=6380
+NGINX_PORT=5002
 ```
 
 > **Security:** Add `.env` to `.gitignore` in production. For local development the defaults work out of the box.
