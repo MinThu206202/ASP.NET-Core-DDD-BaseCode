@@ -6,5 +6,5 @@ public interface IUserRoleRepository
 {
     Task AddAsync(UserRole userRole);
     Task SaveAsync();
-    
+
 }

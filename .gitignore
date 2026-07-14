@@ -6,3 +6,7 @@ obj/
 *.swp
 .DS_Store
 wwwroot/uploads/
+
+# Secrets and environment files
+appsettings.Development.json
+.env

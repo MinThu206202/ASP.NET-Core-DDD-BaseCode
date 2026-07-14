@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.Extensions.Caching.Distributed;
 using UserApp.Application.Common.Interfaces;
 
@@ -9,7 +10,8 @@ public class RedisCacheService : ICacheService
     private readonly IDistributedCache _cache;
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        ReferenceHandler = ReferenceHandler.IgnoreCycles
     };
 
     public RedisCacheService(IDistributedCache cache)

@@ -32,6 +32,7 @@ public class AuthApiController : ControllerBase
     private readonly IBaseRepository<Role> _roleRepo;
     private readonly IDistributedCache _cache;
     private readonly IEmailService _emailService;
+    private readonly ILogger<AuthApiController> _logger;
 
     private static string OtpCodeKey(string email) => $"otp:{email.ToLower()}";
     private static string OtpAttemptsKey(string email) => $"otp_attempts:{email.ToLower()}";
@@ -44,7 +45,8 @@ public class AuthApiController : ControllerBase
         IBaseRepository<UserRole> userRoleRepo,
         IBaseRepository<Role> roleRepo,
         IDistributedCache cache,
-        IEmailService emailService)
+        IEmailService emailService,
+        ILogger<AuthApiController> logger)
     {
         _userService = userService;
         _authService = authService;
@@ -53,6 +55,7 @@ public class AuthApiController : ControllerBase
         _roleRepo = roleRepo;
         _cache = cache;
         _emailService = emailService;
+        _logger = logger;
     }
 
     // ---------------- LOGIN ----------------
@@ -100,10 +103,11 @@ public class AuthApiController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Login failed for {Email}", req.Email);
             return StatusCode(500, new ApiResponse<object>
             {
                 Success = false,
-                Message = ex.Message,
+                Message = "An unexpected error occurred. Please try again later.",
                 Data = null
             });
         }
@@ -150,6 +154,7 @@ public class AuthApiController : ControllerBase
         }
         catch (InvalidOperationException ex)
         {
+            _logger.LogWarning(ex, "Registration failed for {Email}", req.Email);
             return BadRequest(new ApiResponse<object>
             {
                 Success = false,
@@ -158,10 +163,11 @@ public class AuthApiController : ControllerBase
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Registration failed for {Email}", req.Email);
             return StatusCode(500, new ApiResponse<object>
             {
                 Success = false,
-                Message = ex.Message
+                Message = "An unexpected error occurred. Please try again later."
             });
         }
     }
@@ -300,11 +306,18 @@ public class AuthApiController : ControllerBase
 
         var user = await _userService.GetByIdAsync(storedToken.UserId);
 
+        // Revoke old refresh token
+        await _authService.RevokeRefreshTokenAsync(refreshToken);
+
+        // Issue new refresh token
+        var newRefreshToken = await _authService.CreateRefreshTokenAsync(user.Id);
+
         var newAccessToken = await GenerateToken(user);
 
         return Ok(ApiResponse<object>.Ok(new
         {
-            access_token = newAccessToken
+            access_token = newAccessToken,
+            refresh_token = newRefreshToken.Token
         }, "Token refreshed"));
     }
 

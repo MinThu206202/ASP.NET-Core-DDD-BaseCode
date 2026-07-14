@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ "main", "develop" ,"minthu" ]
+    branches: [ "main", "develop", "minthu" ]
   pull_request:
     branches: [ "main" ]
 
@@ -21,8 +21,33 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore UserApp.sln
 
+      - name: Check formatting
+        run: dotnet format --verify-no-changes --verbosity minimal
+
       - name: Build
         run: dotnet build UserApp.sln --no-restore --configuration Release
 
-      - name: Test
-        run: dotnet test UserApp.sln --no-build --configuration Release --verbosity normal
+      - name: Test with coverage
+        run: dotnet test UserApp.sln --no-build --configuration Release --verbosity normal --collect:"XPlat Code Coverage" --results-directory ./coverage
+
+      - name: Upload coverage
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: ./coverage
+
+  docker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create .env for Docker build
+        run: |
+          echo "MYSQL_ROOT_PASSWORD=ci_pwd" >> .env
+          echo "MYSQL_DATABASE=userapp" >> .env
+          echo "MYSQL_USER=userapp" >> .env
+          echo "MYSQL_PASSWORD=ci_pwd" >> .env
+
+      - name: Build Docker images
+        run: docker compose build

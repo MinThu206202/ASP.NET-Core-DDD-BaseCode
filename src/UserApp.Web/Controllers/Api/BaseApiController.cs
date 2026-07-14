@@ -568,47 +568,47 @@ public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
 
     // ---------------- MEDIA UPLOAD ----------------
     [HttpPost("{id}/media")]
-[RequestSizeLimit(10 * 1024 * 1024)]
-public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<IFormFile> files)
-{
-    var entity = await _service.GetByIdAsync(id);
-    if (entity == null)
-        return NotFound(ApiResponse<object>.Fail("Data not found"));
-
-    var ms = MediaService;
-    if (ms == null)
-        return BadRequest(ApiResponse<object>.Fail("Media upload not supported for this entity"));
-
-    var validationError = ValidateApiFiles(files);
-    if (validationError != null)
-        return BadRequest(ApiResponse<object>.Fail(validationError));
-
-    foreach (var file in files)
+    [RequestSizeLimit(10 * 1024 * 1024)]
+    public async Task<ActionResult<ApiResponse<object>>> UploadMedia(Guid id, List<IFormFile> files)
     {
-        if (file.Length == 0) continue;
+        var entity = await _service.GetByIdAsync(id);
+        if (entity == null)
+            return NotFound(ApiResponse<object>.Fail("Data not found"));
 
-        try
+        var ms = MediaService;
+        if (ms == null)
+            return BadRequest(ApiResponse<object>.Fail("Media upload not supported for this entity"));
+
+        var validationError = ValidateApiFiles(files);
+        if (validationError != null)
+            return BadRequest(ApiResponse<object>.Fail(validationError));
+
+        foreach (var file in files)
         {
-            using var mem = new MemoryStream();
-            await file.CopyToAsync(mem);
+            if (file.Length == 0) continue;
 
-            var input = new MediaFileInput
+            try
             {
-                FileName = file.FileName,
-                ContentType = file.ContentType,
-                Data = mem.ToArray()
-            };
+                using var mem = new MemoryStream();
+                await file.CopyToAsync(mem);
 
-            await ms.UploadAsync(typeof(TEntity).Name, id, input);
+                var input = new MediaFileInput
+                {
+                    FileName = file.FileName,
+                    ContentType = file.ContentType,
+                    Data = mem.ToArray()
+                };
+
+                await ms.UploadAsync(typeof(TEntity).Name, id, input);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return BadRequest(ApiResponse<object>.Fail(ex.Message));
+            }
         }
-        catch (InvalidOperationException ex)
-        {
-            return BadRequest(ApiResponse<object>.Fail(ex.Message));
-        }
+
+        return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("UploadMedia")));
     }
-
-    return Ok(ApiResponse<object>.Ok(null, await GetFlashMessageAsync("UploadMedia")));
-}
 
     // ---------------- GET MEDIA ----------------
     [HttpGet("{id}/media")]

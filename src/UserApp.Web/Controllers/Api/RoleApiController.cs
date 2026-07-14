@@ -72,5 +72,5 @@ public class RolesApiController : BaseApiController<Role, RoleViewModel>
 
         return Ok(ApiResponse<object>.Ok(null, "Permissions updated successfully"));
     }
-    
+
 }

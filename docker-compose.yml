@@ -10,11 +10,11 @@ services:
       web:
         condition: service_started
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:80/"]
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
-      start_period: 5s
+      start_period: 10s
 
   web:
     image: mcr.microsoft.com/dotnet/sdk:8.0
@@ -24,6 +24,8 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       ASPNETCORE_URLS: "http://+:80"
+      DOTNET_NOLOGO: "true"
+      DOTNET_CLI_TELEMETRY_OPTOUT: "true"
       ConnectionStrings__MySql: "server=DotNet-Core-Basecode-mysql;port=3306;database=${MYSQL_DATABASE};user=${MYSQL_USER};password=${MYSQL_PASSWORD}"
       ConnectionStrings__Redis: "redis:6379"
     volumes:
@@ -32,9 +34,9 @@ services:
     depends_on:
       - mysql
       - redis
-    entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80"]
+    entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80", "--no-launch-profile"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/"]
+      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health/ready"]
       interval: 15s
       timeout: 10s
       retries: 10

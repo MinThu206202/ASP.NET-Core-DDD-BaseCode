@@ -14,6 +14,7 @@ using UserApp.Application.Users.Interfaces;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using System.Text;
+using UserApp.Application.Common;
 using UserApp.Application.Common.Interfaces;
 using UserApp.Infrastructure.Media;
 using UserApp.Infrastructure.Services;
@@ -68,13 +69,8 @@ builder.Services.AddSingleton(mapperConfiguration.CreateMapper());
 // ------------------------------------------------
 builder.Services.AddScoped(typeof(IBaseRepository<>), typeof(BaseRepository<>));
 
-// ================= AUTO REPOSITORIES =================
 // <AUTO-REPOSITORIES-START>
 builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-// ================= AUTO REPOSITORIES =================
-// <AUTO-REPOSITORIES-START>
-builder.Services.AddScoped<ICommonTableRepository, CommonTableRepository>();
-
 // <AUTO-REPOSITORIES-END>
 builder.Services.AddScoped<IRoleRepository, RoleRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
@@ -110,6 +106,15 @@ builder.Services.AddHttpContextAccessor();
 var redisConn = builder.Configuration.GetConnectionString("Redis") ?? "127.0.0.1:6379";
 builder.Services.AddStackExchangeRedisCache(options => options.Configuration = redisConn);
 builder.Services.AddSingleton<ICacheService, RedisCacheService>();
+
+// ------------------------------------------------
+// Health Checks
+// ------------------------------------------------
+var mysqlConn = builder.Configuration.GetConnectionString("MySql");
+builder.Services.AddHealthChecks()
+    .AddMySql(mysqlConn!, name: "mysql", tags: new[] { "db", "mysql" })
+    .AddRedis(redisConn, name: "redis", tags: new[] { "cache", "redis" });
+
 builder.Services.AddScoped<IEmailService, EmailService>();
 builder.Services.AddScoped<MediaStorage>();
 builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
@@ -128,8 +133,52 @@ var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 builder.Services.AddFluentValidationAutoValidation();
 builder.Services.AddValidatorsFromAssemblyContaining<UserApp.Web.Validators.LoginViewModelValidator>();
 
-var jwtKey = builder.Configuration["Jwt:Key"] ?? "THIS_IS_DEMO_SECRET_KEY_123456";
+// ------------------------------------------------
+// Swagger / OpenAPI
+// ------------------------------------------------
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(options =>
+{
+    options.SwaggerDoc("v1", new Microsoft.OpenApi.Models.OpenApiInfo
+    {
+        Title = "UserApp API",
+        Version = "v1",
+        Description = "ASP.NET Core Clean Architecture API"
+    });
+
+    options.AddSecurityDefinition("Bearer", new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = Microsoft.OpenApi.Models.ParameterLocation.Header,
+        Description = "Enter your JWT token"
+    });
+
+    options.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
+    {
+        {
+            new Microsoft.OpenApi.Models.OpenApiSecurityScheme
+            {
+                Reference = new Microsoft.OpenApi.Models.OpenApiReference
+                {
+                    Type = Microsoft.OpenApi.Models.ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+var jwtKey = builder.Configuration["Jwt:Key"]
+    ?? throw new InvalidOperationException("Jwt:Key is not configured. Set it in appsettings.Development.json or User Secrets.");
+
 var keyBytes = Encoding.UTF8.GetBytes(jwtKey);
+
+if (keyBytes.Length < 32)
+    throw new InvalidOperationException($"Jwt:Key must be at least 32 bytes (256 bits). Current length: {keyBytes.Length} bytes.");
 
 builder.Services
     .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
@@ -256,16 +305,16 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     // Sync migration history: mark auto-generated migrations as applied if their table already exists
-    await SyncMigrationHistoryAsync(db);
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await SyncMigrationHistoryAsync(db, logger);
 
-    await db.Database.MigrateAsync();
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedRolesAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedPermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.RbacSeeder.SeedAdminRolePermissionsAsync(db);
     await UserApp.Infrastructure.Persistence.Seed.UserSeeder.SeedUsersAsync(scope.ServiceProvider);
 }
 
-static async Task SyncMigrationHistoryAsync(AppDbContext db)
+static async Task SyncMigrationHistoryAsync(AppDbContext db, ILogger logger)
 {
     // Sync auto-generated table migrations (create if table already exists)
     try
@@ -273,7 +322,10 @@ static async Task SyncMigrationHistoryAsync(AppDbContext db)
         await db.Database.ExecuteSqlRawAsync(@"
         ");
     }
-    catch { }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to sync auto-generated table migrations");
+    }
 
     // Mark DropCategoryPriceAndDescription as applied (no-op if columns already adjusted)
     try
@@ -285,7 +337,10 @@ static async Task SyncMigrationHistoryAsync(AppDbContext db)
                 "INSERT IGNORE INTO `__EFMigrationsHistory` (`MigrationId`, `ProductVersion`) VALUES ('20260617163210_DropCategoryPriceAndDescription', '8.0.0')");
         }
     }
-    catch { }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to mark DropCategoryPriceAndDescription migration as applied");
+    }
 }
 
 await app.InitializeDatabaseAsync();
@@ -298,7 +353,45 @@ app.Use(async (context, next) =>
     await next();
 });
 
+// Global exception handler (must be early in pipeline)
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exception = context.Features.Get<Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>()?.Error;
+        var logger = context.RequestServices.GetRequiredService<ILogger<Program>>();
+
+        logger.LogError(exception, "Unhandled exception: {Message}", exception?.Message);
+
+        var isApiRequest = context.Request.Path.StartsWithSegments("/api") ||
+                          context.Request.Headers.Accept.ToString().Contains("application/json");
+
+        if (isApiRequest)
+        {
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/json";
+            await context.Response.WriteAsJsonAsync(new ApiResponse<object>
+            {
+                Success = false,
+                Message = "An unexpected error occurred. Please try again later."
+            });
+        }
+        else
+        {
+            context.Response.Redirect("/Error/500");
+        }
+    });
+});
+
 app.UseStaticFiles();
+
+// Swagger / OpenAPI
+app.UseSwagger();
+app.UseSwaggerUI(options =>
+{
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "UserApp API v1");
+    options.RoutePrefix = "swagger";
+});
 
 app.UseRouting();
 
@@ -319,6 +412,32 @@ app.UseAuthorization();
 // ------------------------------------------------
 // ROUTES
 // ------------------------------------------------
+
+// Health check endpoints
+app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
+{
+    ResponseWriter = async (context, report) =>
+    {
+        context.Response.ContentType = "application/json";
+        var result = new
+        {
+            status = report.Status.ToString(),
+            checks = report.Entries.Select(e => new
+            {
+                name = e.Key,
+                status = e.Value.Status.ToString(),
+                description = e.Value.Description,
+                duration = e.Value.Duration.ToString()
+            }),
+            totalDuration = report.TotalDuration.ToString()
+        };
+        await context.Response.WriteAsJsonAsync(result);
+    }
+});
+
+// Health check for Docker (simple 200 OK)
+app.MapHealthChecks("/health/ready");
+
 app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Auth}/{action=Login}/{id?}"

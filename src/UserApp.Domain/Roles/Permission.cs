@@ -5,6 +5,7 @@ namespace UserApp.Domain.Roles;
 
 public class Permission : Entity<Guid>
 {
+    [JsonInclude]
     public string Name { get; private set; } = default!;
 
     private readonly List<RolePermission> _rolePermissions = new();
