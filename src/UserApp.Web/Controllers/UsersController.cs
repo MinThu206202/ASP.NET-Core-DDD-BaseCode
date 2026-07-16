@@ -1,7 +1,11 @@
 using AutoMapper;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
+using UserApp.Application.Notifications.DTOs;
+using UserApp.Application.Notifications.Interfaces;
 using UserApp.Application.Users.Interfaces;
 using UserApp.Domain.Common;
+using UserApp.Domain.Notifications;
 using UserApp.Domain.Roles;
 using UserApp.Domain.Users;
 using UserApp.Web.ViewModels;
@@ -13,17 +17,20 @@ public class UsersController : BaseController<User, UserViewModel>
     private readonly IBaseRepository<Role> _roleRepo;
     private readonly IBaseRepository<UserRole> _userRoleRepo;
     private readonly IUserService _userService;
+    private readonly INotificationService _notificationService;
 
     public UsersController(
         IUserService service,
         IMapper mapper,
         IBaseRepository<Role> roleRepo,
-        IBaseRepository<UserRole> userRoleRepo)
+        IBaseRepository<UserRole> userRoleRepo,
+        INotificationService notificationService)
         : base(service, mapper)
     {
         _userService = service;
         _roleRepo = roleRepo;
         _userRoleRepo = userRoleRepo;
+        _notificationService = notificationService;
     }
 
     public override async Task<IActionResult> Index(int page = 1, int size = 10)
@@ -70,7 +77,19 @@ public class UsersController : BaseController<User, UserViewModel>
 
         try
         {
-            await _userService.CreateAsync(vm.Email!, vm.FullName!, vm.Password!);
+            var created = await _userService.CreateAsync(vm.Email!, vm.FullName!, vm.Password!);
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            await _notificationService.SendAsync(new CreateNotificationRequest
+            {
+                RecipientId = created.Id,
+                SenderId = currentUserId != null ? Guid.Parse(currentUserId) : null,
+                Title = "Welcome to UserApp",
+                Message = $"Your account has been created. Welcome, {vm.FullName}!",
+                Type = NotificationType.UserCreated,
+                ActionUrl = "/Auth/Login"
+            });
+
             TempData["Success"] = "User created successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -110,6 +129,18 @@ public class UsersController : BaseController<User, UserViewModel>
             user.UpdateProfile(vm.FullName!);
             await _service.UpdateAsync(user);
             await _service.SaveAsync();
+
+            var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            await _notificationService.SendAsync(new CreateNotificationRequest
+            {
+                RecipientId = id,
+                SenderId = currentUserId != null ? Guid.Parse(currentUserId) : null,
+                Title = "Profile Updated",
+                Message = "Your profile information has been updated.",
+                Type = NotificationType.UserUpdated,
+                ActionUrl = "/Users"
+            });
+
             TempData["Success"] = "User updated successfully.";
             return RedirectToAction(nameof(Index));
         }
@@ -140,8 +171,22 @@ public class UsersController : BaseController<User, UserViewModel>
         var user = await _service.GetByIdAsync(id);
         if (user == null) return NotFound();
 
+        var name = user.FullName;
         await _service.RemoveAsync(user);
         await _service.SaveAsync();
+
+        var currentUserId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (currentUserId != null && Guid.TryParse(currentUserId, out var adminId))
+        {
+            await _notificationService.SendAsync(new CreateNotificationRequest
+            {
+                RecipientId = adminId,
+                Title = "User Deleted",
+                Message = $"User \"{name}\" has been deleted from the system.",
+                Type = NotificationType.UserDeleted
+            });
+        }
+
         TempData["Success"] = "User deleted successfully.";
         return RedirectToAction(nameof(Index));
     }
@@ -183,7 +228,11 @@ public class UsersController : BaseController<User, UserViewModel>
 
         roleIds ??= new List<Guid>();
 
+        var allRoles = await _roleRepo.ListAsync(0, 10000);
+        var roleLookup = allRoles.ToDictionary(r => r.Id, r => r.Name);
+
         var existing = await _userRoleRepo.ListAsync(0, 10000);
+        var oldRoleIds = existing.Where(x => x.UserId == userId).Select(x => x.RoleId).ToHashSet();
         var toRemove = existing.Where(x => x.UserId == userId).ToList();
 
         foreach (var ur in toRemove)
@@ -193,6 +242,33 @@ public class UsersController : BaseController<User, UserViewModel>
             await _userRoleRepo.AddAsync(new UserRole { UserId = userId, RoleId = rid });
 
         await _userRoleRepo.SaveChangesAsync();
+
+        var addedRoles = roleIds.Where(r => !oldRoleIds.Contains(r)).ToList();
+        var removedRoles = oldRoleIds.Where(r => !roleIds.Contains(r)).ToList();
+
+        if (addedRoles.Count > 0)
+        {
+            var names = string.Join(", ", addedRoles.Select(id => roleLookup.GetValueOrDefault(id)).Where(n => n != null));
+            await _notificationService.SendAsync(new CreateNotificationRequest
+            {
+                RecipientId = userId,
+                Title = "Role Assigned",
+                Message = $"You have been assigned the role(s): {names}",
+                Type = NotificationType.RoleAssigned
+            });
+        }
+
+        if (removedRoles.Count > 0)
+        {
+            var names = string.Join(", ", removedRoles.Select(id => roleLookup.GetValueOrDefault(id)).Where(n => n != null));
+            await _notificationService.SendAsync(new CreateNotificationRequest
+            {
+                RecipientId = userId,
+                Title = "Role Removed",
+                Message = $"The role(s) have been removed: {names}",
+                Type = NotificationType.RoleRemoved
+            });
+        }
 
         TempData["Success"] = "Roles updated successfully.";
         return RedirectToAction(nameof(ManageRoles), new { userId });

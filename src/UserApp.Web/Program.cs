@@ -121,6 +121,9 @@ builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
 
 builder.Services.AddScoped<PermissionFilter>();
 builder.Services.AddScoped<AuditContextActionFilter>();
+
+builder.Services.AddSignalR();
+
 var mvcBuilder = builder.Services.AddControllersWithViews(options =>
 {
     options.Filters.AddService<PermissionFilter>();
@@ -442,6 +445,8 @@ app.MapControllerRoute(
     name: "default",
     pattern: "{controller=Auth}/{action=Login}/{id?}"
 );
+
+app.MapHub<UserApp.Infrastructure.Notifications.Hubs.NotificationHub>("/hubs/notifications");
 
 app.Run();
 

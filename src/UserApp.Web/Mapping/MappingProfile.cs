@@ -9,6 +9,8 @@ using UserApp.Domain.CommonTables;
 using UserApp.Web.ViewModels.CommonTables;
 using UserApp.Domain.AuditLogs;
 using UserApp.Web.ViewModels.AuditLogs;
+using UserApp.Domain.Notifications;
+using UserApp.Application.Notifications.DTOs;
 
 
 
@@ -47,6 +49,7 @@ public class MappingProfile : Profile
 
 
 
+        CreateMap<Notification, NotificationDto>();
         // <AUTO-MAPPINGS-END>
         CreateMap<RoleViewModel, Role>();
         CreateMap<PermissionViewModel, Permission>();
