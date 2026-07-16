@@ -1,13 +1,17 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
+using UserApp.Application.Notifications.DTOs;
+using UserApp.Application.Notifications.Interfaces;
 using UserApp.Application.Users.DTOs;
 using UserApp.Application.Users.Interfaces;
 using UserApp.Web.ViewModels;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using UserApp.Domain.Notifications;
 using UserApp.Domain.Roles;
+using UserApp.Domain.Users;
 using UserApp.Domain.Common;
 using Microsoft.Extensions.Caching.Distributed;
 using System.Text;
@@ -29,6 +33,9 @@ public class AuthController : Controller
     private readonly IDistributedCache _cache;
     private readonly IEmailService _emailService;
     private readonly IWebHostEnvironment _env;
+    private readonly INotificationService _notificationService;
+    private readonly IUserRepository _userRepository;
+    private readonly IEmailTaskQueue _emailTaskQueue;
 
     private static string OtpCodeKey(string email) => $"otp:{email.ToLower()}";
     private static string OtpAttemptsKey(string email) => $"otp_attempts:{email.ToLower()}";
@@ -40,7 +47,10 @@ public class AuthController : Controller
         IBaseRepository<Role> roleBaseRepository,
         IDistributedCache cache,
         IEmailService emailService,
-        IWebHostEnvironment env)
+        IWebHostEnvironment env,
+        INotificationService notificationService,
+        IUserRepository userRepository,
+        IEmailTaskQueue emailTaskQueue)
     {
         _authService = authService;
         _userRoleBaseRepository = userRoleBaseRepository;
@@ -48,6 +58,9 @@ public class AuthController : Controller
         _cache = cache;
         _emailService = emailService;
         _env = env;
+        _notificationService = notificationService;
+        _userRepository = userRepository;
+        _emailTaskQueue = emailTaskQueue;
     }
 
     [HttpGet]
@@ -107,6 +120,15 @@ public class AuthController : Controller
         // 6. Issue the browser cookie
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal);
 
+        await _notificationService.SendAsync(new CreateNotificationRequest
+        {
+            RecipientId = userEntity.Id,
+            Title = "New Login Detected",
+            Message = $"A new login was detected on your account at {DateTime.Now:HH:mm}.",
+            Type = NotificationType.LoginDetected,
+            Priority = NotificationPriority.Low
+        });
+
         return RedirectToAction("Index", "Users");
     }
 
@@ -123,24 +145,41 @@ public class AuthController : Controller
         {
             await _authService.RegisterAsync(new RegisterDto(vm.Email, vm.FullName, vm.Password));
 
-            try
+            var registeredUser = await _authService.GetUserByEmailAsync(vm.Email);
+            if (registeredUser != null)
             {
-                var loginUrl = Url.Action("Login", "Auth", null, Request.Scheme) ?? "/Auth/Login";
-                await _emailService.SendTemplateAsync(
-                    vm.Email,
+                await _notificationService.SendAsync(new CreateNotificationRequest
+                {
+                    RecipientId = registeredUser.Id,
+                    Title = "Welcome to UserApp",
+                    Message = $"Your account has been created successfully. Welcome, {vm.FullName}!",
+                    Type = NotificationType.UserCreated,
+                    ActionUrl = "/Auth/Login"
+                });
+            }
+
+            var loginUrl = Url.Action("Login", "Auth", null, Request.Scheme) ?? "/Auth/Login";
+
+            // Enqueue welcome email (background, non-blocking)
+            var capturedEmail = vm.Email;
+            var capturedName = vm.FullName;
+            var capturedLoginUrl = loginUrl;
+            await _emailTaskQueue.EnqueueAsync(async (sp, ct) =>
+            {
+                var emailService = sp.GetRequiredService<IEmailService>();
+                await emailService.SendTemplateAsync(
+                    capturedEmail,
                     "Welcome to UserApp",
                     "RegistrationWelcome.md",
                     new Dictionary<string, string>
                     {
-                        ["FULLNAME"] = vm.FullName,
-                        ["LOGIN_URL"] = loginUrl,
+                        ["FULLNAME"] = capturedName,
+                        ["LOGIN_URL"] = capturedLoginUrl,
                         ["YEAR"] = DateTime.UtcNow.Year.ToString()
                     });
-            }
-            catch
-            {
-                // Email failure does not block registration
-            }
+            });
+
+            await NotifyAdminsOnRegisterAsync(vm.Email, vm.FullName);
 
             return RedirectToAction("Login", "Auth");
         }
@@ -302,6 +341,19 @@ public class AuthController : Controller
         try
         {
             await _authService.UpdatePasswordAsync(email, vm.NewPassword);
+
+            var user = await _authService.GetUserByEmailAsync(email);
+            if (user != null)
+            {
+                await _notificationService.SendAsync(new CreateNotificationRequest
+                {
+                    RecipientId = user.Id,
+                    Title = "Password Changed",
+                    Message = "Your password has been changed successfully.",
+                    Type = NotificationType.PasswordChanged,
+                    Priority = NotificationPriority.High
+                });
+            }
         }
         catch (Exception ex)
         {
@@ -362,6 +414,68 @@ public class AuthController : Controller
     {
         await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
         return RedirectToAction("Login");
+    }
+
+    private async Task NotifyAdminsOnRegisterAsync(string email, string fullName)
+    {
+        try
+        {
+            var roles = await _roleBaseRepository.ListAsync(0, 10000);
+            var adminRole = roles.FirstOrDefault(r => r.Name == "Admin");
+            if (adminRole == null) return;
+
+            var allUserRoles = await _userRoleBaseRepository.ListAsync(0, 10000);
+            var adminUserIds = allUserRoles
+                .Where(ur => ur.RoleId == adminRole.Id)
+                .Select(ur => ur.UserId)
+                .ToHashSet();
+
+            if (adminUserIds.Count == 0) return;
+
+            var allUsers = await _userRepository.ListAsync(0, 10000);
+            var admins = allUsers.Where(u => adminUserIds.Contains(u.Id)).ToList();
+
+            foreach (var admin in admins)
+            {
+                await _notificationService.SendAsync(new CreateNotificationRequest
+                {
+                    RecipientId = admin.Id,
+                    Title = "New User Registered",
+                    Message = $"A new user has registered: {fullName} ({email})",
+                    Type = NotificationType.SystemAnnouncement,
+                    ActionUrl = "/Users"
+                });
+            }
+
+            // Enqueue admin notification emails (background, non-blocking)
+            var adminEmails = admins.Select(a => a.Email.ToString()).ToList();
+            var capturedEmail = email;
+            var capturedName = fullName;
+            await _emailTaskQueue.EnqueueAsync(async (sp, ct) =>
+            {
+                var emailService = sp.GetRequiredService<IEmailService>();
+                foreach (var adminEmail in adminEmails)
+                {
+                    try
+                    {
+                        await emailService.SendAsync(
+                            adminEmail,
+                            "New User Registration",
+                            $"<p>A new user has registered on the system:</p>" +
+                            $"<ul><li><strong>Name:</strong> {capturedName}</li>" +
+                            $"<li><strong>Email:</strong> {capturedEmail}</li></ul>");
+                    }
+                    catch
+                    {
+                        // Per-admin email failure does not block others
+                    }
+                }
+            });
+        }
+        catch
+        {
+            // Failure to notify admins does not block registration
+        }
     }
 
     [HttpGet]

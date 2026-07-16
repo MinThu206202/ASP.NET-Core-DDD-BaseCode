@@ -8,7 +8,8 @@
   <ItemGroup>
     <ProjectReference Include="..\UserApp.Domain\UserApp.Domain.csproj" />
   </ItemGroup>
-  <ItemGroup>
+<ItemGroup>
+    <PackageReference Include="AutoMapper" Version="16.1.1" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,164 @@
+@model IReadOnlyList<UserApp.Application.Notifications.DTOs.NotificationDto>
+
+<div class="animate-fade-in">
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-black text-slate-800 tracking-tight">Notifications</h1>
+            <p class="text-slate-500 text-sm mt-1">
+                <span id="unreadCountBadge" class="inline-flex items-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span>
+                    @ViewBag.UnreadCount unread
+                </span>
+            </p>
+        </div>
+    </div>
+
+    @if (Model.Count == 0)
+    {
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-12 text-center">
+            <div class="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-100 flex items-center justify-center">
+                <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                </svg>
+            </div>
+            <h3 class="text-lg font-bold text-slate-700 mb-1">No notifications yet</h3>
+            <p class="text-sm text-slate-400">You're all caught up!</p>
+        </div>
+    }
+    else
+    {
+        <div class="space-y-3">
+            @foreach (var n in Model)
+            {
+                <div class="@(n.IsRead ? "bg-white" : "bg-indigo-50/60 border-indigo-200") rounded-2xl shadow-sm border border-slate-200 p-5 transition-all duration-150 hover:shadow-md">
+                    <div class="flex items-start gap-4">
+                        <div class="shrink-0 mt-0.5">
+                            @switch (n.Priority)
+                            {
+                                case UserApp.Domain.Notifications.NotificationPriority.Critical:
+                                    <div class="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z"/>
+                                        </svg>
+                                    </div>
+                                    break;
+                                case UserApp.Domain.Notifications.NotificationPriority.High:
+                                    <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z"/>
+                                        </svg>
+                                    </div>
+                                    break;
+                                default:
+                                    <div class="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center">
+                                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                                        </svg>
+                                    </div>
+                                    break;
+                            }
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-start justify-between gap-4">
+                                <div>
+                                    <h4 class="font-bold text-slate-800 @(n.IsRead ? "" : "text-indigo-900")">
+                                        @n.Title
+                                        @if (!n.IsRead)
+                                        {
+                                            <span class="inline-block w-2 h-2 rounded-full bg-indigo-500 ml-2 align-middle"></span>
+                                        }
+                                    </h4>
+                                    <p class="text-sm text-slate-600 mt-1">@n.Message</p>
+                                </div>
+                                <span class="text-xs text-slate-400 whitespace-nowrap shrink-0">@n.CreatedAt.ToString("MMM dd, HH:mm")</span>
+                            </div>
+                            <div class="flex items-center gap-3 mt-3">
+                                @if (!n.IsRead)
+                                {
+                                    <form asp-action="MarkAsRead" asp-route-id="@n.Id" method="post" class="inline">
+                                        <button type="submit" class="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition-colors">
+                                            Mark as read
+                                        </button>
+                                    </form>
+                                }
+                                @if (!string.IsNullOrEmpty(n.ActionUrl))
+                                {
+                                    <a href="@n.ActionUrl" class="text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors">
+                                        View details →
+                                    </a>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/notifications')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('ReceiveNotification', function (notification) {
+                var unreadBadge = document.getElementById('unreadCountBadge');
+                if (unreadBadge) {
+                    var match = unreadBadge.textContent.match(/(\d+)/);
+                    var count = match ? parseInt(match[1]) + 1 : 1;
+                    unreadBadge.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-indigo-500"></span> ' + count + ' unread';
+                }
+                showRealTimeToast(notification);
+            });
+
+            connection.start().catch(function (err) {
+                console.error('SignalR connection error:', err.toString());
+            });
+
+            function showRealTimeToast(notification) {
+                var container = document.getElementById('toastContainer');
+                if (!container) return;
+
+                var toastId = 'realtime-toast-' + Date.now();
+                var toast = document.createElement('div');
+                toast.id = toastId;
+                toast.className = 'toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white rounded-l-[40px] rounded-r-none shadow-lg border border-indigo-100 overflow-hidden';
+                toast.innerHTML =
+                    '<div class="flex items-center gap-3 pl-4 pr-5 py-3.5">' +
+                        '<div class="w-9 h-9 rounded-full bg-indigo-500 shrink-0 flex items-center justify-center">' +
+                            '<svg class="w-[18px] h-[18px] text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">' +
+                                '<path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>' +
+                            '</svg>' +
+                        '</div>' +
+                        '<div class="flex flex-col min-w-0 leading-snug">' +
+                            '<span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">' + (notification.title || 'New Notification') + '</span>' +
+                            '<span class="text-[15px] font-medium text-slate-700 mt-0.5">' + (notification.message || '') + '</span>' +
+                        '</div>' +
+                    '</div>' +
+                    '<div class="absolute bottom-0 left-0 h-[3px] bg-indigo-400/60 toast-progress-bar origin-left rounded-r-full"></div>';
+
+                container.appendChild(toast);
+
+                var progressBar = toast.querySelector('.toast-progress-bar');
+                if (progressBar) {
+                    progressBar.addEventListener('animationend', function () {
+                        toast.classList.remove('toast-notification-enter');
+                        toast.classList.add('toast-notification-exit');
+                        toast.addEventListener('animationend', function (e) {
+                            if (e.animationName === 'toastSlideOut') {
+                                toast.remove();
+                            }
+                        });
+                    });
+                }
+
+                toast.addEventListener('click', function () {
+                    window.location.href = '/Notification';
+                });
+            }
+        });
+    </script>
+}

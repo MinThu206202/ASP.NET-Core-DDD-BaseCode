@@ -5,12 +5,14 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using UserApp.Domain.Users;
 using UserApp.Infrastructure.Persistence.Configurations;
+using UserApp.Infrastructure.Notifications.Configurations;
 using MediaEntity = UserApp.Domain.Media.MediaFile;
 using UserApp.Domain.Roles;
 using UserApp.Domain.CommonTables;
 using UserApp.Domain.AuditLogs;
 using UserApp.Application.Common;
 using UserApp.Domain.Common;
+using UserApp.Domain.Notifications;
 
 
 
@@ -158,7 +160,7 @@ public class AppDbContext : DbContext
     public DbSet<MediaEntity> Media => Set<MediaEntity>();
     public DbSet<Role> Roles => Set<Role>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
-
+    public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
 
@@ -183,6 +185,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.ApplyConfiguration(new AuditLogArchiveConfiguration());
         modelBuilder.ApplyConfiguration(new UserConfiguration());
+        modelBuilder.ApplyConfiguration(new NotificationConfiguration());
 
         modelBuilder.Entity<UserRole>()
             .HasKey(x => new { x.UserId, x.RoleId });

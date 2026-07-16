@@ -274,6 +274,7 @@
             <a asp-controller="Permissions" asp-action="Index" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">Role Permissions</a>
             <a asp-controller="CommonTable" asp-action="Index" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">Common Tables</a>
             <a asp-controller="AuditLog" asp-action="Index" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">Audit Logs</a>
+            <a asp-controller="Notification" asp-action="Index" class="flex items-center px-4 py-2 rounded-lg text-sm font-medium tracking-wide transition-all duration-150 group hover:bg-slate-800 hover:text-white">Notifications</a>
         </div>
     </div>
 </nav>
@@ -288,7 +289,23 @@
     <div class="md:ml-64 flex flex-col h-screen">
         
         <header class="hidden md:flex items-center justify-end bg-white border-b border-slate-200 px-10 py-3.5 h-16 sticky top-0 z-20 shadow-sm">
-            <div id="profileDropdownWrapper" class="relative">
+            <div class="flex items-center gap-4">
+                <!-- Notification Bell -->
+                <div class="relative">
+                    <a asp-controller="Notification" asp-action="Index"
+                       class="relative p-2.5 rounded-xl hover:bg-slate-100 transition-colors duration-150 group"
+                       title="Notifications">
+                        <svg class="w-5 h-5 text-slate-500 group-hover:text-indigo-600 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>
+                        </svg>
+                        <span id="navbarUnreadBadge"
+                              class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm ring-2 ring-white hidden">
+                            0
+                        </span>
+                    </a>
+                </div>
+
+                <div id="profileDropdownWrapper" class="relative">
                 <button id="dropdownToggleBtn" class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-700 font-bold text-sm rounded-xl hover:bg-slate-100 transition-all duration-150 focus:outline-none">
                     <div class="w-6 h-6 rounded-full bg-indigo-600 text-white font-black text-[11px] flex items-center justify-center shadow-sm">
                         @(!string.IsNullOrEmpty(User.Identity?.Name) ? User.Identity.Name.Substring(0, Math.Min(2, User.Identity.Name.Length)).ToUpper() : "U")
@@ -325,6 +342,7 @@
                     </form>
                 </div>
             </div>
+        </div>
         </header>
 
         <main class="flex-1 overflow-y-auto px-4 pt-20 pb-6 md:pt-8 md:px-10 md:pb-8">
@@ -586,6 +604,84 @@
     </script>
 
     @RenderSection("Scripts", required: false)
+
+    <script src="https://cdn.jsdelivr.net/npm/@@microsoft/signalr@8.0.0/dist/browser/signalr.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            var navbarBadge = document.getElementById('navbarUnreadBadge');
+            var toastContainer = document.getElementById('toastContainer');
+
+            // Fetch initial unread count
+            fetch('/Notification/GetUnreadCount')
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (data.count > 0) {
+                        navbarBadge.textContent = data.count;
+                        navbarBadge.classList.remove('hidden');
+                    }
+                })
+                .catch(function () {});
+
+            // Connect to SignalR hub
+            var connection = new signalR.HubConnectionBuilder()
+                .withUrl('/hubs/notifications')
+                .withAutomaticReconnect()
+                .build();
+
+            connection.on('ReceiveNotification', function (notification) {
+                // Update badge
+                if (navbarBadge) {
+                    var current = parseInt(navbarBadge.textContent) || 0;
+                    navbarBadge.textContent = current + 1;
+                    navbarBadge.classList.remove('hidden');
+                }
+
+                // Show toast
+                if (toastContainer) {
+                    var toastId = 'realtime-toast-' + Date.now();
+                    var toast = document.createElement('div');
+                    toast.id = toastId;
+                    toast.className = 'toast-notification toast-notification-enter pointer-events-auto relative flex flex-col w-full bg-white rounded-l-[40px] rounded-r-none shadow-lg border border-indigo-100 overflow-hidden';
+                    toast.innerHTML =
+                        '<div class="flex items-center gap-3 pl-4 pr-5 py-3.5">' +
+                            '<div class="w-9 h-9 rounded-full bg-indigo-500 shrink-0 flex items-center justify-center">' +
+                                '<svg class="w-[18px] h-[18px] text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">' +
+                                    '<path stroke-linecap="round" stroke-linejoin="round" d="M14.857 17.082a23.848 23.848 0 005.454-1.31A8.967 8.967 0 0118 9.75v-.7V9A6 6 0 006 9v.75a8.967 8.967 0 01-2.312 6.022c1.733.64 3.56 1.085 5.455 1.31m5.714 0a24.255 24.255 0 01-5.714 0m5.714 0a3 3 0 11-5.714 0"/>' +
+                                '</svg>' +
+                            '</div>' +
+                            '<div class="flex flex-col min-w-0 leading-snug">' +
+                                '<span class="text-xs font-bold text-indigo-600 uppercase tracking-wider">' + (notification.title || 'New Notification') + '</span>' +
+                                '<span class="text-[15px] font-medium text-slate-700 mt-0.5">' + (notification.message || '') + '</span>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div class="absolute bottom-0 left-0 h-[3px] bg-indigo-400/60 toast-progress-bar origin-left rounded-r-full"></div>';
+
+                    toastContainer.appendChild(toast);
+
+                    var progressBar = toast.querySelector('.toast-progress-bar');
+                    if (progressBar) {
+                        progressBar.addEventListener('animationend', function () {
+                            toast.classList.remove('toast-notification-enter');
+                            toast.classList.add('toast-notification-exit');
+                            toast.addEventListener('animationend', function (e) {
+                                if (e.animationName === 'toastSlideOut') {
+                                    toast.remove();
+                                }
+                            });
+                        });
+                    }
+
+                    toast.addEventListener('click', function () {
+                        window.location.href = '/Notification';
+                    });
+                }
+            });
+
+            connection.start().catch(function (err) {
+                console.error('SignalR connection error:', err.toString());
+            });
+        });
+    </script>
 
     <mini-profiler />
 </body>
