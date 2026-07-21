@@ -13,11 +13,13 @@ using UserApp.Domain.Common;
 using UserApp.Domain.Roles;
 using UserApp.Domain.Users;
 using Microsoft.Extensions.Caching.Distributed;
+using UserApp.Web.Common;
 
 namespace UserApp.Web.Controllers.Api;
 
 [Route("api/auth")]
 [ApiController]
+[ServiceFilter(typeof(IdempotencyKeyFilter))]
 [EnableRateLimiting("AuthPolicy")]
 public class AuthApiController : ControllerBase
 {

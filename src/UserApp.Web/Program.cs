@@ -42,6 +42,7 @@ using UserApp.Web.Jobs;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using UserApp.Web.Common;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -121,6 +122,7 @@ builder.Services.AddScoped<IMediaPipeline, MediaPipeline>();
 
 builder.Services.AddScoped<PermissionFilter>();
 builder.Services.AddScoped<AuditContextActionFilter>();
+builder.Services.AddScoped<IdempotencyKeyFilter>();
 
 builder.Services.AddSignalR();
 
