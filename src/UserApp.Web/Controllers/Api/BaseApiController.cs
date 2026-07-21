@@ -12,12 +12,14 @@ using UserApp.Application.CommonTables.Interfaces;
 using UserApp.Domain.Common;
 using UserApp.Domain.CommonTables;
 using UserApp.Infrastructure.Persistence;
+using UserApp.Web.Common;
 
 namespace UserApp.Web.Controllers.Api;
 
 [ApiController]
 [Route("api/[controller]")]
 [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+[ServiceFilter(typeof(IdempotencyKeyFilter))]
 public abstract class BaseApiController<TEntity, TViewModel> : ControllerBase
     where TEntity : Entity<Guid>
     where TViewModel : class

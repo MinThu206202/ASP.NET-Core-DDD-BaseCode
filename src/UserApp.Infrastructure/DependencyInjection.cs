@@ -14,6 +14,7 @@ using UserApp.Infrastructure.Notifications.Channels;
 using UserApp.Infrastructure.Notifications.Dispatchers;
 using UserApp.Infrastructure.Notifications.Repositories;
 using UserApp.Infrastructure.Persistence;
+using UserApp.Infrastructure.Services;
 using UserApp.Infrastructure.Persistence.Repositories;
 using UserApp.Infrastructure.Persistence.Seed;
 using Microsoft.AspNetCore.Builder;
@@ -48,6 +49,8 @@ public static class DependencyInjection
         services.AddSingleton<IEmailTaskQueue, EmailTaskQueue>();
         services.AddSingleton<EmailTaskQueue>(sp => (EmailTaskQueue)sp.GetRequiredService<IEmailTaskQueue>());
         services.AddHostedService<EmailBackgroundService>();
+
+        services.AddScoped<IIdempotencyService, IdempotencyService>();
 
         return services;
     }
