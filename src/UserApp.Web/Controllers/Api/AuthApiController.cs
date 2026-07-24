@@ -19,7 +19,6 @@ namespace UserApp.Web.Controllers.Api;
 
 [Route("api/auth")]
 [ApiController]
-[ServiceFilter(typeof(IdempotencyKeyFilter))]
 [EnableRateLimiting("AuthPolicy")]
 public class AuthApiController : ControllerBase
 {

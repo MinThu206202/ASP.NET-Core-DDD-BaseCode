@@ -42,7 +42,6 @@ using UserApp.Web.Jobs;
 using System.Threading.RateLimiting;
 using FluentValidation;
 using FluentValidation.AspNetCore;
-using UserApp.Web.Common;
 
 
 var builder = WebApplication.CreateBuilder(args);
