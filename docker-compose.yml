@@ -8,7 +8,7 @@ services:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
     depends_on:
       web:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/ || exit 1"]
       interval: 10s
@@ -32,15 +32,17 @@ services:
       - ./src:/src:cached
       - ~/.nuget/packages:/root/.nuget/packages:delegated
     depends_on:
-      - mysql
-      - redis
-    entrypoint: ["dotnet", "watch", "run", "--project", "UserApp.Web/UserApp.Web.csproj", "--urls", "http://+:80", "--no-launch-profile"]
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    entrypoint: ["sh", "-c", "apt-get update -qq && apt-get install -y -qq curl > /dev/null 2>&1 && dotnet watch run --project UserApp.Web/UserApp.Web.csproj --urls http://+:80 --no-launch-profile"]
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://127.0.0.1:80/health/ready"]
+      test: ["CMD", "curl", "-sf", "http://127.0.0.1:80/health/ready"]
       interval: 15s
       timeout: 10s
-      retries: 10
-      start_period: 30s
+      retries: 20
+      start_period: 60s
 
   redis:
     image: redis:7-alpine
